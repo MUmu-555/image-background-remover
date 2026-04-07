@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build
+      - name: Build (static export)
         run: pnpm run build
         env:
           REMOVEBG_API_KEY: ${{ secrets.REMOVEBG_API_KEY }}
@@ -54,4 +54,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .next --project-name=image-background-remover --branch=main
+          command: pages deploy out --project-name=image-background-remover --branch=main --commit-dirty=true
