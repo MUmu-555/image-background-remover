@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Env
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
