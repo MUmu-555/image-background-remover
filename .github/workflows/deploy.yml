@@ -21,17 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --force
-
-      - name: Verify next binary
-        run: |
-          echo "node_modules/.bin/next exists: $(test -f node_modules/.bin/next && echo YES || echo NO)"
-          ls node_modules/.bin/next
+        run: npm ci
 
       - name: Build
-        run: npx next build
+        run: npm run build
         env:
           REMOVEBG_API_KEY: ${{ secrets.REMOVEBG_API_KEY }}
 
