@@ -21,13 +21,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
       - name: Build
-        run: ./node_modules/.bin/next build
+        run: npm run build
         env:
           REMOVEBG_API_KEY: ${{ secrets.REMOVEBG_API_KEY }}
 
