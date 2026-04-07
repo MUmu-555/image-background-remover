@@ -23,15 +23,15 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
+        run: npm install --force
+
+      - name: Verify next binary
         run: |
-          npm install --legacy-peer-deps
-          echo "node_modules exists: $(test -d node_modules && echo yes || echo no)"
-          echo "next binary: $(test -f node_modules/.bin/next && echo yes || echo no)"
+          echo "node_modules/.bin/next exists: $(test -f node_modules/.bin/next && echo YES || echo NO)"
+          ls node_modules/.bin/next
 
       - name: Build
-        run: |
-          export PATH="$PWD/node_modules/.bin:$PATH"
-          next build
+        run: npx next build
         env:
           REMOVEBG_API_KEY: ${{ secrets.REMOVEBG_API_KEY }}
 
