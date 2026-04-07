@@ -1,247 +1,507 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
-type Status = "idle" | "uploading" | "processing" | "done" | "error";
+// ─── Types ───────────────────────────────────────────────────────────────────
+type Status = "idle" | "processing" | "done" | "error";
 
-export default function Home() {
-  const [status, setStatus] = useState<Status>("idle");
-  const [originalUrl, setOriginalUrl] = useState<string | null>(null);
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string>("");
+interface ImageState {
+  originalUrl: string | null;
+  resultUrl: string | null;
+  originalName: string;
+  originalSize: string;
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_SIZE_MB = 20;
+
+// ─── Helper ──────────────────────────────────────────────────────────────────
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function Header() {
+  return (
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg className="w-4.5 h-4.5 text-white" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <span className="font-bold text-gray-900 text-base">BG Remover</span>
+        </div>
+        <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">Free</span>
+        <div className="ml-auto flex items-center gap-4 text-sm text-gray-500">
+          <span className="hidden sm:inline">No sign-up required</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="bg-gradient-to-b from-indigo-50 via-white to-white pt-12 pb-8 px-4 text-center">
+      <div className="max-w-3xl mx-auto">
+        <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+          <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+          AI-Powered · Instant Results
+        </div>
+        <h1 className="text-3xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-4">
+          Remove Image Background
+          <span className="block text-indigo-600">in Seconds — For Free</span>
+        </h1>
+        <p className="text-gray-500 text-base sm:text-lg max-w-xl mx-auto">
+          Upload any image and our AI instantly removes the background.
+          Perfect for e-commerce, ID photos, and design assets.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function UploadZone({
+  onFile,
+}: {
+  onFile: (file: File) => void;
+}) {
   const [isDragging, setIsDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) onFile(file);
+    },
+    [onFile]
+  );
+
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+      onDragEnter={() => setIsDragging(true)}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      className={`
+        relative cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-200 
+        flex flex-col items-center justify-center p-10 sm:p-16 text-center
+        ${isDragging
+          ? "border-indigo-500 bg-indigo-50 drag-active scale-[1.01]"
+          : "border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50/50"
+        }
+      `}
+    >
+      {/* Upload icon */}
+      <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-5 transition-colors ${isDragging ? "bg-indigo-200" : "bg-gray-100"}`}>
+        <svg className={`w-10 h-10 transition-colors ${isDragging ? "text-indigo-600" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+      </div>
+
+      <p className="text-xl font-semibold text-gray-700 mb-2">
+        {isDragging ? "Drop your image here" : "Drag & drop your image here"}
+      </p>
+      <p className="text-sm text-gray-400 mb-6">
+        Supports JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB
+      </p>
+
+      <button
+        type="button"
+        className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm"
+        onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+      >
+        Choose Image
+      </button>
+
+      {/* Sample images hint */}
+      <p className="mt-5 text-xs text-gray-400">
+        Works best with people, products, animals, and objects
+      </p>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+      />
+    </div>
+  );
+}
+
+function ProcessingView({ originalUrl }: { originalUrl: string | null }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+      <div className="flex flex-col items-center gap-5">
+        {/* Spinner */}
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
+          <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+        </div>
+        <div>
+          <p className="text-lg font-semibold text-gray-800">Removing background…</p>
+          <p className="text-sm text-gray-400 mt-1">AI is analyzing your image. Usually takes 2–5 seconds.</p>
+        </div>
+        {/* Preview of original while loading */}
+        {originalUrl && (
+          <div className="mt-2 relative">
+            <img
+              src={originalUrl}
+              alt="Processing"
+              className="max-h-40 max-w-xs rounded-xl object-contain opacity-40 blur-sm"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="bg-white/90 text-indigo-600 text-xs font-semibold px-3 py-1.5 rounded-full shadow">
+                Processing…
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ResultView({
+  imageState,
+  onDownload,
+  onReset,
+}: {
+  imageState: ImageState;
+  onDownload: () => void;
+  onReset: () => void;
+}) {
   const [showOriginal, setShowOriginal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-5">
+      {/* Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+          <button
+            onClick={() => setShowOriginal(false)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+              !showOriginal ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Result
+          </button>
+          <button
+            onClick={() => setShowOriginal(true)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+              showOriginal ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Original
+          </button>
+        </div>
+        <div className="text-xs text-gray-400">
+          {imageState.originalName} · {imageState.originalSize}
+        </div>
+      </div>
+
+      {/* Image comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Original */}
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Original</span>
+          </div>
+          <div className="bg-gray-50 flex items-center justify-center p-4 min-h-48">
+            {imageState.originalUrl && (
+              <img src={imageState.originalUrl} alt="Original" className="max-h-56 max-w-full object-contain rounded-lg" />
+            )}
+          </div>
+        </div>
+
+        {/* Result */}
+        <div className="bg-white rounded-2xl border-2 border-indigo-200 overflow-hidden ring-1 ring-indigo-100">
+          <div className="px-4 pt-3 pb-2 border-b border-indigo-100 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+            <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Background Removed</span>
+            <span className="ml-auto text-xs text-green-600 font-semibold">✓ Done</span>
+          </div>
+          <div className="checkerboard flex items-center justify-center p-4 min-h-48">
+            {imageState.resultUrl && (
+              <img src={imageState.resultUrl} alt="Background removed" className="max-h-56 max-w-full object-contain rounded-lg" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={onDownload}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-6 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Download PNG
+        </button>
+        <button
+          onClick={onReset}
+          className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-colors"
+        >
+          Remove Another Image
+        </button>
+      </div>
+
+      {/* Tips */}
+      <p className="text-center text-xs text-gray-400">
+        💡 Your image is processed in memory and never stored on our servers
+      </p>
+    </div>
+  );
+}
+
+function ErrorView({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-red-200 p-10 text-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
+          <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-base font-semibold text-gray-800">Something went wrong</p>
+          <p className="text-sm text-red-500 mt-1 max-w-sm">{message}</p>
+        </div>
+        <button
+          onClick={onRetry}
+          className="mt-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FeaturesSection() {
+  const features = [
+    {
+      emoji: "⚡",
+      title: "Instant Results",
+      desc: "AI removes the background in 2–5 seconds. No waiting, no queue.",
+    },
+    {
+      emoji: "🔒",
+      title: "100% Private",
+      desc: "Images are processed in memory and never stored on our servers.",
+    },
+    {
+      emoji: "✂️",
+      title: "Perfect Cutout",
+      desc: "Handles hair, fur, complex edges, and transparent objects with ease.",
+    },
+  ];
+
+  return (
+    <section className="py-12 px-4">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-center text-2xl font-bold text-gray-900 mb-8">
+          Why choose BG Remover?
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {features.map((f) => (
+            <div
+              key={f.title}
+              className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="text-4xl mb-3">{f.emoji}</div>
+              <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function UseCasesSection() {
+  const cases = [
+    { icon: "🛍️", title: "E-commerce", desc: "Create clean white-background product photos" },
+    { icon: "🪪", title: "ID Photos", desc: "Swap backgrounds for official documents" },
+    { icon: "🎨", title: "Design", desc: "Extract subjects for graphics and presentations" },
+    { icon: "📱", title: "Social Media", desc: "Create stickers and engaging content" },
+  ];
+
+  return (
+    <section className="bg-white py-12 px-4 border-t border-gray-100">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-center text-2xl font-bold text-gray-900 mb-8">
+          Perfect for every use case
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {cases.map((c) => (
+            <div key={c.title} className="flex flex-col items-center text-center p-4">
+              <div className="text-3xl mb-2">{c.icon}</div>
+              <p className="font-semibold text-gray-800 text-sm mb-1">{c.title}</p>
+              <p className="text-xs text-gray-500">{c.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="bg-gray-50 border-t border-gray-200 py-8 px-4">
+      <div className="max-w-4xl mx-auto text-center">
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <span className="font-bold text-gray-700 text-sm">BG Remover</span>
+        </div>
+        <p className="text-xs text-gray-400">
+          © {new Date().getFullYear()} BG Remover · Powered by Remove.bg AI ·{" "}
+          <span>Free to use · No sign-up required</span>
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function HomePage() {
+  const [status, setStatus] = useState<Status>("idle");
+  const [imageState, setImageState] = useState<ImageState>({
+    originalUrl: null,
+    resultUrl: null,
+    originalName: "",
+    originalSize: "",
+  });
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (imageState.originalUrl) URL.revokeObjectURL(imageState.originalUrl);
+      if (imageState.resultUrl) URL.revokeObjectURL(imageState.resultUrl);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const processFile = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setErrorMsg("Please upload an image file.");
+    // Client-side validation
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setErrorMsg("Please upload an image file (JPG, PNG, WEBP).");
       setStatus("error");
       return;
     }
-    if (file.size > 20 * 1024 * 1024) {
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
       setErrorMsg("Image must be under 20MB.");
       setStatus("error");
       return;
     }
 
-    // Preview original
-    const localUrl = URL.createObjectURL(file);
-    setOriginalUrl(localUrl);
-    setResultUrl(null);
+    // Revoke previous URLs
+    if (imageState.originalUrl) URL.revokeObjectURL(imageState.originalUrl);
+    if (imageState.resultUrl) URL.revokeObjectURL(imageState.resultUrl);
+
+    const originalUrl = URL.createObjectURL(file);
+    setImageState({
+      originalUrl,
+      resultUrl: null,
+      originalName: file.name,
+      originalSize: formatBytes(file.size),
+    });
     setStatus("processing");
     setErrorMsg("");
 
-    const formData = new FormData();
-    formData.append("image", file);
-
     try {
-      const res = await fetch("/api/remove-bg", {
-        method: "POST",
-        body: formData,
-      });
+      const fd = new FormData();
+      fd.append("image", file);
+
+      const res = await fetch("/api/remove-bg", { method: "POST", body: fd });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || `Server error ${res.status}`);
+        const body = await res.json().catch(() => ({ error: `Error ${res.status}` }));
+        throw new Error(body.error || `Server error ${res.status}`);
       }
 
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setResultUrl(url);
+      const resultUrl = URL.createObjectURL(blob);
+
+      setImageState((prev) => ({ ...prev, resultUrl }));
       setStatus("done");
-    } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : "Something went wrong.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStatus("error");
     }
-  }, []);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
-  };
+  }, [imageState.originalUrl, imageState.resultUrl]);
 
   const handleDownload = () => {
-    if (!resultUrl) return;
+    if (!imageState.resultUrl) return;
     const a = document.createElement("a");
-    a.href = resultUrl;
+    a.href = imageState.resultUrl;
     a.download = "removed-background.png";
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
 
   const handleReset = () => {
+    if (imageState.originalUrl) URL.revokeObjectURL(imageState.originalUrl);
+    if (imageState.resultUrl) URL.revokeObjectURL(imageState.resultUrl);
     setStatus("idle");
-    setOriginalUrl(null);
-    setResultUrl(null);
+    setImageState({ originalUrl: null, resultUrl: null, originalName: "", originalSize: "" });
     setErrorMsg("");
-    setShowOriginal(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
     <main className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 py-4 px-6">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">BG Remover</h1>
-          <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Free</span>
-        </div>
-      </header>
+      <Header />
+      <HeroSection />
 
-      {/* Hero */}
-      <section className="bg-gradient-to-b from-indigo-50 to-white py-12 px-6 text-center">
-        <h2 className="text-4xl font-extrabold text-gray-900 mb-3">
-          Remove Image Background<br />
-          <span className="text-indigo-600">Instantly & Free</span>
-        </h2>
-        <p className="text-gray-500 text-lg max-w-xl mx-auto">
-          Upload any image — our AI removes the background in seconds. No sign-up required.
-        </p>
-      </section>
-
-      {/* Main content */}
-      <section className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
+      {/* Main interaction area */}
+      <section className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8">
         {status === "idle" && (
-          <div
-            className={`border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-colors ${
-              isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50"
-            }`}
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-          >
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-gray-700">Drop your image here</p>
-                <p className="text-sm text-gray-400 mt-1">or click to browse · PNG, JPG, WEBP · Max 20MB</p>
-              </div>
-              <button className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
-                Upload Image
-              </button>
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          </div>
+          <UploadZone onFile={processFile} />
         )}
-
         {status === "processing" && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-16 h-16 relative">
-                <div className="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
-                <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-gray-700">Removing background...</p>
-                <p className="text-sm text-gray-400 mt-1">AI is working on your image</p>
-              </div>
-              {originalUrl && (
-                <img src={originalUrl} alt="Original" className="mt-4 max-h-48 rounded-xl object-contain opacity-50" />
-              )}
-            </div>
-          </div>
+          <ProcessingView originalUrl={imageState.originalUrl} />
         )}
-
-        {status === "done" && resultUrl && (
-          <div className="space-y-6">
-            {/* Before / After */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-gray-200 p-4">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Original</p>
-                <div className="bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center min-h-48">
-                  {originalUrl && <img src={originalUrl} alt="Original" className="max-h-64 object-contain" />}
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl border border-indigo-200 p-4 ring-1 ring-indigo-100">
-                <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-3">Background Removed ✓</p>
-                <div
-                  className="rounded-xl overflow-hidden flex items-center justify-center min-h-48"
-                  style={{ background: "repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%) 0 0 / 20px 20px" }}
-                >
-                  <img src={resultUrl} alt="Result" className="max-h-64 object-contain" />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={handleDownload}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download PNG
-              </button>
-              <button
-                onClick={handleReset}
-                className="bg-white hover:bg-gray-50 text-gray-700 font-semibold px-8 py-3 rounded-xl border border-gray-200 transition-colors"
-              >
-                Remove Another
-              </button>
-            </div>
-          </div>
+        {status === "done" && (
+          <ResultView
+            imageState={imageState}
+            onDownload={handleDownload}
+            onReset={handleReset}
+          />
         )}
-
         {status === "error" && (
-          <div className="bg-white rounded-2xl border border-red-200 p-12 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-gray-700">Something went wrong</p>
-                <p className="text-sm text-red-500 mt-1">{errorMsg}</p>
-              </div>
-              <button onClick={handleReset} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
-                Try Again
-              </button>
-            </div>
-          </div>
+          <ErrorView message={errorMsg} onRetry={handleReset} />
         )}
       </section>
 
-      {/* Features */}
-      <section className="bg-white border-t border-gray-100 py-12 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          {[
-            { icon: "⚡", title: "Instant Results", desc: "AI processes your image in under 5 seconds" },
-            { icon: "🔒", title: "Privacy First", desc: "Images are never stored on our servers" },
-            { icon: "✂️", title: "Perfect Cutout", desc: "Handles hair, fur, and complex edges" },
-          ].map((f) => (
-            <div key={f.title}>
-              <div className="text-3xl mb-3">{f.icon}</div>
-              <h3 className="font-semibold text-gray-800 mb-1">{f.title}</h3>
-              <p className="text-sm text-gray-500">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-200 py-6 px-6 text-center text-sm text-gray-400">
-        © {new Date().getFullYear()} BG Remover · Powered by Remove.bg API
-      </footer>
+      <FeaturesSection />
+      <UseCasesSection />
+      <Footer />
     </main>
   );
 }

@@ -1,57 +1,94 @@
-# BG Remover
+# Image Background Remover
 
-A free AI-powered background removal tool built with Next.js and deployed on Cloudflare Pages.
+A free AI-powered background removal tool built with **Next.js 14** and deployed on **Cloudflare Pages**.
+
+🔗 **Live Demo**: Coming soon
+
+## Features
+
+- ✅ Drag & drop or click to upload (JPG, PNG, WEBP, max 20MB)
+- ✅ AI removes background in 2–5 seconds (powered by Remove.bg)
+- ✅ Side-by-side before/after comparison
+- ✅ One-click PNG download with transparency
+- ✅ Images never stored — processed in memory only
+- ✅ Fully responsive (mobile-first)
+- ✅ SEO optimized
 
 ## Tech Stack
-- **Frontend**: Next.js 14 + Tailwind CSS
-- **API**: Edge Runtime → Remove.bg API
-- **Deploy**: Cloudflare Pages
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 14 (App Router) |
+| Styling | Tailwind CSS |
+| API Runtime | Edge Runtime |
+| Background AI | Remove.bg API |
+| Deployment | Cloudflare Pages |
+| Storage | None (in-memory only) |
 
 ## Quick Start
 
-### 1. Get API Key
-Sign up at [remove.bg](https://www.remove.bg/api) and get your API key.
+### 1. Clone & Install
 
-### 2. Local Development
 ```bash
+git clone https://github.com/MUmu-555/image-background-remover.git
+cd image-background-remover
 npm install
-cp .dev.vars.example .dev.vars   # fill in your REMOVEBG_API_KEY
-npm run dev
 ```
 
-### 3. Deploy to Cloudflare Pages
+### 2. Set Up API Key
+
+Get a free API key at [remove.bg/api](https://www.remove.bg/api), then:
 
 ```bash
-# Install Wrangler
-npm install -g wrangler
+cp .dev.vars.example .dev.vars
+# Edit .dev.vars and add your key:
+# REMOVEBG_API_KEY=your_key_here
+```
 
-# Login
-wrangler login
+### 3. Run Locally
 
-# Deploy
+```bash
+npm run dev
+# Visit http://localhost:3000
+```
+
+## Deploy to Cloudflare Pages
+
+```bash
+# Build
 npm run build
-wrangler pages deploy .next
+
+# Deploy (first time will prompt login)
+npx wrangler pages deploy .next
+
+# Or connect your GitHub repo in Cloudflare Dashboard for auto-deploy
 ```
 
-### 4. Set Environment Variable on Cloudflare
-Go to **Cloudflare Dashboard → Pages → Your Project → Settings → Environment Variables**:
-```
-REMOVEBG_API_KEY = your_api_key_here
-```
+**Set environment variable in Cloudflare Dashboard:**
+- Pages → Your Project → Settings → Environment Variables
+- Add: `REMOVEBG_API_KEY` = `your_key_here`
 
 ## Project Structure
+
 ```
 src/
-  app/
-    page.tsx              # Main UI
-    layout.tsx            # Root layout + SEO meta
-    globals.css           # Tailwind base styles
-    api/
-      remove-bg/
-        route.ts          # Edge API → remove.bg proxy
+└── app/
+    ├── page.tsx              # Main UI (upload / processing / result / error states)
+    ├── layout.tsx            # Root layout + SEO metadata
+    ├── globals.css           # Tailwind + custom styles
+    └── api/
+        └── remove-bg/
+            └── route.ts      # Edge API route → Remove.bg proxy
 ```
 
-## Notes
-- Images are **never stored** — processed in memory and returned directly
-- Edge Runtime ensures low latency globally via Cloudflare's network
-- Max image size: 20MB
+## Remove.bg Pricing
+
+| Plan | Price | Credits |
+|------|-------|---------|
+| Free | $0 | 50/month (preview quality) |
+| Pay-as-you-go | From $0.20/image | No expiry |
+| Subscription | From $9/month | 40 HD images/month |
+
+## License
+
+MIT
