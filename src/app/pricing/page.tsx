@@ -119,6 +119,10 @@ const FAQ = [
     a: "JPG, PNG, and WEBP up to 20MB. Results are always delivered as transparent PNG.",
   },
   {
+    q: "How many free tries do guests get?",
+    a: "Guests (not signed in) get 1 free try per month per IP. Sign up for a free account to get 5 credits every month.",
+  },
+  {
     q: "Can I cancel my subscription anytime?",
     a: "Absolutely. Cancel anytime — you keep access until the end of your billing period.",
   },

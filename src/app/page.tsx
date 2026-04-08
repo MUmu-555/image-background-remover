@@ -526,7 +526,7 @@ function FAQSection() {
     },
     {
       q: "How many images can I process?",
-      a: "Guests: 3/day. Free accounts: 5/month. Pro: 30/month. Business: 100/month. You can also buy credit packs that never expire.",
+      a: "Guests: 1/month. Free accounts: 5/month. Pro: 30/month. Business: 100/month. You can also buy credit packs that never expire.",
     },
     {
       q: "Are my images stored on your servers?",

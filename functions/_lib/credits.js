@@ -85,27 +85,27 @@ export async function consumeCredit(db, userId) {
 }
 
 /**
- * 访客 IP 限流（KV）：3次/天
+ * 访客 IP 限流（KV）：1次/月
  */
-export const GUEST_DAILY_LIMIT = 3;
+export const GUEST_MONTHLY_LIMIT = 1;
 
 export async function checkGuestRateLimit(kv, ip) {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const key = `guest:${ip}:${today}`;
+  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const key = `guest:${ip}:${month}`;
 
   const raw = await kv.get(key);
   const count = raw ? parseInt(raw) : 0;
 
-  if (count >= GUEST_DAILY_LIMIT) {
+  if (count >= GUEST_MONTHLY_LIMIT) {
     return { allowed: false, used: count, remaining: 0 };
   }
 
-  // TTL 到明天
+  // TTL 到下月1日
   const now = new Date();
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const ttlSeconds = Math.floor((tomorrow - now) / 1000);
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const ttlSeconds = Math.floor((nextMonth - now) / 1000);
 
   await kv.put(key, String(count + 1), { expirationTtl: ttlSeconds });
 
-  return { allowed: true, used: count + 1, remaining: GUEST_DAILY_LIMIT - count - 1 };
+  return { allowed: true, used: count + 1, remaining: GUEST_MONTHLY_LIMIT - count - 1 };
 }

@@ -47,7 +47,7 @@ export async function onRequestPost(context) {
       return Response.json(
         {
           error: "guest_limit_reached",
-          message: `You've used your 3 free daily tries. Sign in to get 5 free credits per month.`,
+          message: `You've used your 1 free monthly try. Sign in to get 5 free credits per month.`,
           remaining: 0,
         },
         { status: 429 }
