@@ -5,11 +5,22 @@ import { useState, useRef, useCallback, useEffect } from "react";
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Status = "idle" | "processing" | "done" | "error";
 
+interface Credits {
+  plan: string;
+  limit: number;
+  used: number;
+  monthlyRemaining: number;
+  bonusCredits: number;
+  totalRemaining: number;
+  canUse: boolean;
+}
+
 interface User {
   id: string;
   email: string;
   name: string;
   avatar: string;
+  credits?: Credits;
 }
 
 interface ImageState {
@@ -31,6 +42,38 @@ function formatBytes(bytes: number): string {
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
+
+function CreditsBar({ credits }: { credits: Credits }) {
+  const pct = Math.round((credits.monthlyRemaining / credits.limit) * 100);
+  const color = pct > 50 ? "bg-green-500" : pct > 20 ? "bg-yellow-400" : "bg-red-500";
+
+  return (
+    <div className="px-4 py-3 border-b border-gray-100">
+      <div className="flex justify-between items-center mb-1.5">
+        <span className="text-xs text-gray-500">Monthly credits</span>
+        <span className="text-xs font-semibold text-gray-700">
+          {credits.monthlyRemaining}/{credits.limit}
+        </span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-1.5">
+        <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      {credits.bonusCredits > 0 && (
+        <p className="text-xs text-indigo-600 mt-1.5 font-medium">
+          +{credits.bonusCredits} bonus credits
+        </p>
+      )}
+      {credits.totalRemaining === 0 && (
+        <a
+          href="/pricing"
+          className="block mt-2 text-center text-xs bg-indigo-600 text-white rounded-lg py-1.5 font-semibold hover:bg-indigo-700 transition-colors"
+        >
+          Get more credits →
+        </a>
+      )}
+    </div>
+  );
+}
 
 function UserMenu({ user }: { user: User }) {
   const [open, setOpen] = useState(false);
@@ -55,16 +98,20 @@ function UserMenu({ user }: { user: User }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+        <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
           <div className="px-4 py-2.5 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
             <p className="text-xs text-gray-400 truncate">{user.email}</p>
+            <span className="inline-block mt-1 text-xs bg-indigo-100 text-indigo-600 font-semibold px-2 py-0.5 rounded-full capitalize">
+              {user.credits?.plan ?? "free"}
+            </span>
           </div>
+          {user.credits && <CreditsBar credits={user.credits} />}
+          <a href="/pricing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            Upgrade plan
+          </a>
           <form action="/api/auth/logout" method="POST">
-            <button
-              type="submit"
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
+            <button type="submit" className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
               Sign out
             </button>
           </form>
@@ -342,10 +389,18 @@ function ResultView({
 function ErrorView({
   message,
   onRetry,
+  user,
 }: {
   message: string;
   onRetry: () => void;
+  user: User | null;
 }) {
+  const isCreditsError =
+    message.includes("Credits") ||
+    message.includes("credits") ||
+    message.includes("free daily tries") ||
+    message.includes("free credits");
+
   return (
     <div className="bg-white rounded-2xl border border-red-200 p-10 text-center">
       <div className="flex flex-col items-center gap-4">
@@ -355,15 +410,38 @@ function ErrorView({
           </svg>
         </div>
         <div>
-          <p className="text-base font-semibold text-gray-800">Something went wrong</p>
+          <p className="text-base font-semibold text-gray-800">
+            {isCreditsError ? "You're out of credits" : "Something went wrong"}
+          </p>
           <p className="text-sm text-red-500 mt-1 max-w-sm">{message}</p>
         </div>
-        <button
-          onClick={onRetry}
-          className="mt-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors"
-        >
-          Try Again
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 mt-1">
+          {isCreditsError ? (
+            <>
+              {!user && (
+                <a
+                  href="/api/auth/login"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+                >
+                  Sign in for 5 free/month
+                </a>
+              )}
+              <a
+                href="/pricing"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+              >
+                Get more credits →
+              </a>
+            </>
+          ) : (
+            <button
+              onClick={onRetry}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors"
+            >
+              Try Again
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -532,6 +610,10 @@ export default function HomePage() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: `Error ${res.status}` }));
+        // 区分额度用完 vs 普通错误
+        if (body.error === "credits_exhausted" || body.error === "guest_limit_reached") {
+          throw new Error(body.message || "Credits exhausted.");
+        }
         throw new Error(body.error || `Server error ${res.status}`);
       }
 
@@ -567,6 +649,21 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col">
       <Header user={user} authError={authError} />
+
+      {/* 额度预警 banner */}
+      {user?.credits && user.credits.totalRemaining <= 2 && user.credits.totalRemaining > 0 && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2.5 text-center text-sm text-yellow-800">
+          ⚠️ Only <strong>{user.credits.totalRemaining}</strong> credit{user.credits.totalRemaining > 1 ? "s" : ""} left this month.{" "}
+          <a href="/pricing" className="underline font-semibold hover:text-yellow-900">Upgrade now →</a>
+        </div>
+      )}
+      {user?.credits && user.credits.totalRemaining === 0 && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2.5 text-center text-sm text-red-800">
+          🚫 You've used all your credits.{" "}
+          <a href="/pricing" className="underline font-semibold hover:text-red-900">Get more credits →</a>
+        </div>
+      )}
+
       <HeroSection />
 
       {/* Main interaction area */}
@@ -585,7 +682,7 @@ export default function HomePage() {
           />
         )}
         {status === "error" && (
-          <ErrorView message={errorMsg} onRetry={handleReset} />
+          <ErrorView message={errorMsg} onRetry={handleReset} user={user} />
         )}
       </section>
 
