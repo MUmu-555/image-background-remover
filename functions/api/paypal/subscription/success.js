@@ -26,7 +26,8 @@ export async function onRequestGet(context) {
   try {
     const sub = await getPayPalSubscription(env, subscriptionId);
 
-    if (sub.status !== "ACTIVE") {
+    // 接受 ACTIVE 或 APPROVAL_PENDING（用户刚完成订阅时可能还未激活）
+    if (!["ACTIVE", "APPROVAL_PENDING"].includes(sub.status)) {
       console.error("Subscription not active:", sub.status);
       return Response.redirect(`${origin}/pricing?error=subscription_not_active`, 302);
     }

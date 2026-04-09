@@ -314,7 +314,7 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           {PLANS.map((plan) => {
             const monthlyPrice = billing === "yearly" ? (plan.yearly / 12).toFixed(1) : plan.monthly;
-            const isLoading = loadingPlan === plan.planKey;
+            const isLoading = plan.planKey !== null && loadingPlan === plan.planKey;
 
             return (
               <div key={plan.name} className={`bg-white rounded-2xl border-2 ${plan.color} p-7 flex flex-col relative`}>
