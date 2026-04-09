@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const PLANS = [
   {
@@ -14,6 +14,7 @@ const PLANS = [
     badge: null,
     cta: "Get started free",
     ctaStyle: "border border-gray-300 text-gray-700 hover:bg-gray-50",
+    planKey: null,
     features: [
       "5 images per month",
       "High-res PNG download",
@@ -33,6 +34,7 @@ const PLANS = [
     badge: "Most Popular",
     cta: "Upgrade to Pro",
     ctaStyle: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",
+    planKey: "pro",
     features: [
       "30 images per month",
       "High-res PNG download",
@@ -53,6 +55,7 @@ const PLANS = [
     badge: null,
     cta: "Upgrade to Business",
     ctaStyle: "border border-gray-300 text-gray-700 hover:bg-gray-50",
+    planKey: "business",
     features: [
       "100 images per month",
       "High-res PNG download",
@@ -67,34 +70,10 @@ const PLANS = [
 ];
 
 const CREDIT_PACKS = [
-  {
-    name: "Starter",
-    credits: 10,
-    price: 3.4,
-    perCredit: "0.34",
-    badge: null,
-  },
-  {
-    name: "Popular",
-    credits: 30,
-    price: 9.9,
-    perCredit: "0.33",
-    badge: "🔥 Best Value",
-  },
-  {
-    name: "Pro Pack",
-    credits: 80,
-    price: 24.9,
-    perCredit: "0.31",
-    badge: null,
-  },
-  {
-    name: "Bulk",
-    credits: 200,
-    price: 59.9,
-    perCredit: "0.30",
-    badge: null,
-  },
+  { key: "starter", name: "Starter", credits: 10, price: 3.4, perCredit: "0.34", badge: null },
+  { key: "popular", name: "Popular", credits: 30, price: 9.9, perCredit: "0.33", badge: "🔥 Best Value" },
+  { key: "pro", name: "Pro Pack", credits: 80, price: 24.9, perCredit: "0.31", badge: null },
+  { key: "bulk", name: "Bulk", credits: 200, price: 59.9, perCredit: "0.30", badge: null },
 ];
 
 const FAQ = [
@@ -144,12 +123,142 @@ function X() {
   );
 }
 
+function Spinner() {
+  return (
+    <svg className="animate-spin h-4 w-4 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+  );
+}
+
 export default function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [loadingPack, setLoadingPack] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  // 检查 URL 参数（支付回调后的提示）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+    const error = params.get("error");
+
+    if (success === "credits") {
+      const credits = params.get("credits");
+      setToast({ type: "success", msg: `🎉 ${credits} credits added to your account!` });
+    } else if (success === "subscription") {
+      const plan = params.get("plan");
+      setToast({ type: "success", msg: `🎉 Successfully upgraded to ${plan?.toUpperCase()} plan!` });
+    } else if (error) {
+      const msgs: Record<string, string> = {
+        payment_failed: "Payment failed. Please try again.",
+        capture_failed: "Failed to process payment. Contact support.",
+        subscription_not_active: "Subscription activation failed.",
+        missing_token: "Invalid payment session.",
+        invalid_data: "Payment data error. Contact support.",
+        server_error: "Server error. Please try again.",
+      };
+      setToast({ type: "error", msg: msgs[error] || `Payment error: ${error}` });
+    }
+
+    // 清理 URL 参数
+    if (success || error) {
+      window.history.replaceState({}, "", "/pricing");
+    }
+  }, []);
+
+  // 自动隐藏 toast
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // 处理套餐购买（订阅）
+  const handlePlanClick = useCallback(async (plan: typeof PLANS[0]) => {
+    if (!plan.planKey) {
+      window.location.href = "/api/auth/login";
+      return;
+    }
+
+    setLoadingPlan(plan.planKey);
+    try {
+      const res = await fetch("/api/paypal/create-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: plan.planKey, billing }),
+      });
+
+      if (res.status === 401) {
+        window.location.href = "/api/auth/login";
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+
+      if (data.approveUrl) {
+        window.location.href = data.approveUrl;
+      } else {
+        throw new Error("No approve URL");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setToast({ type: "error", msg: `Payment error: ${msg}` });
+    } finally {
+      setLoadingPlan(null);
+    }
+  }, [billing]);
+
+  // 处理积分包购买（一次性）
+  const handlePackClick = useCallback(async (pack: typeof CREDIT_PACKS[0]) => {
+    setLoadingPack(pack.key);
+    try {
+      const res = await fetch("/api/paypal/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pack: pack.key }),
+      });
+
+      if (res.status === 401) {
+        window.location.href = "/api/auth/login";
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+
+      if (data.approveUrl) {
+        window.location.href = data.approveUrl;
+      } else {
+        throw new Error("No approve URL");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setToast({ type: "error", msg: `Payment error: ${msg}` });
+    } finally {
+      setLoadingPack(null);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Toast 通知 */}
+      {toast && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg text-sm font-semibold transition-all ${
+            toast.type === "success"
+              ? "bg-green-600 text-white"
+              : "bg-red-600 text-white"
+          }`}
+        >
+          {toast.msg}
+          <button onClick={() => setToast(null)} className="ml-4 opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
@@ -205,6 +314,7 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           {PLANS.map((plan) => {
             const monthlyPrice = billing === "yearly" ? (plan.yearly / 12).toFixed(1) : plan.monthly;
+            const isLoading = loadingPlan === plan.planKey;
 
             return (
               <div key={plan.name} className={`bg-white rounded-2xl border-2 ${plan.color} p-7 flex flex-col relative`}>
@@ -245,14 +355,12 @@ export default function PricingPage() {
                 </div>
 
                 <button
-                  className={`w-full py-3 rounded-xl font-semibold text-sm transition-colors mb-6 ${plan.ctaStyle}`}
-                  onClick={() => {
-                    // TODO: PayPal integration
-                    if (plan.monthly === 0) window.location.href = "/api/auth/login";
-                    else alert("Payment coming soon! Stay tuned.");
-                  }}
+                  className={`w-full py-3 rounded-xl font-semibold text-sm transition-colors mb-6 flex items-center justify-center gap-2 ${plan.ctaStyle} ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
+                  onClick={() => handlePlanClick(plan)}
+                  disabled={isLoading}
                 >
-                  {plan.cta}
+                  {isLoading && <Spinner />}
+                  {isLoading ? "Redirecting..." : plan.cta}
                 </button>
 
                 <ul className="space-y-2.5 flex-1">
@@ -282,28 +390,33 @@ export default function PricingPage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {CREDIT_PACKS.map((pack) => (
-              <div key={pack.name} className="bg-white rounded-2xl border border-gray-200 p-6 text-center relative hover:border-indigo-300 hover:shadow-md transition-all">
-                {pack.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-orange-500 text-white text-xs font-bold px-3 py-0.5 rounded-full">
-                      {pack.badge}
-                    </span>
-                  </div>
-                )}
-                <h3 className="font-bold text-gray-900 mb-1">{pack.name}</h3>
-                <div className="text-3xl font-extrabold text-indigo-600 my-3">{pack.credits}</div>
-                <p className="text-sm text-gray-500 mb-4">credits</p>
-                <div className="text-2xl font-bold text-gray-900 mb-1">${pack.price}</div>
-                <p className="text-xs text-gray-400 mb-5">${pack.perCredit}/credit</p>
-                <button
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
-                  onClick={() => alert("Payment coming soon! Stay tuned.")}
-                >
-                  Buy now
-                </button>
-              </div>
-            ))}
+            {CREDIT_PACKS.map((pack) => {
+              const isLoading = loadingPack === pack.key;
+              return (
+                <div key={pack.name} className="bg-white rounded-2xl border border-gray-200 p-6 text-center relative hover:border-indigo-300 hover:shadow-md transition-all">
+                  {pack.badge && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-orange-500 text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                        {pack.badge}
+                      </span>
+                    </div>
+                  )}
+                  <h3 className="font-bold text-gray-900 mb-1">{pack.name}</h3>
+                  <div className="text-3xl font-extrabold text-indigo-600 my-3">{pack.credits}</div>
+                  <p className="text-sm text-gray-500 mb-4">credits</p>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">${pack.price}</div>
+                  <p className="text-xs text-gray-400 mb-5">${pack.perCredit}/credit</p>
+                  <button
+                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
+                    onClick={() => handlePackClick(pack)}
+                    disabled={isLoading}
+                  >
+                    {isLoading && <Spinner />}
+                    {isLoading ? "Redirecting..." : "Buy now"}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -1,1 +1,16 @@
-REMOVEBG_API_KEY=your_api_key_here
+REMOVEBG_API_KEY=your_removebg_api_key_here
+
+# PayPal 配置（中国版 paypal.cn，沙盒测试用 sandbox 凭证）
+PAYPAL_CLIENT_ID=your_paypal_client_id_here
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret_here
+PAYPAL_MODE=sandbox  # sandbox | production
+PAYPAL_WEBHOOK_ID=your_webhook_id_here  # 在 PayPal 后台创建 Webhook 后获取
+
+# PayPal Billing Plan IDs（在 PayPal 后台创建订阅计划后填入）
+PAYPAL_PLAN_PRO_MONTHLY=P-xxxxxxxxxxxxx
+PAYPAL_PLAN_PRO_YEARLY=P-xxxxxxxxxxxxx
+PAYPAL_PLAN_BUSINESS_MONTHLY=P-xxxxxxxxxxxxx
+PAYPAL_PLAN_BUSINESS_YEARLY=P-xxxxxxxxxxxxx
+
+# 网站地址（用于 PayPal 回调 URL）
+SITE_ORIGIN=https://image-backgroundremover.com

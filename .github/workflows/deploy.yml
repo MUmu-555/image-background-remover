@@ -55,3 +55,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy out --project-name=image-background-remover --branch=main --commit-dirty=true
+
+      # 部署后自动运行 D1 迁移（仅 main 分支）
+      - name: Run D1 migrations
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply image-bgremover-db --remote
+        continue-on-error: true  # 迁移可能已执行过，忽略重复错误
