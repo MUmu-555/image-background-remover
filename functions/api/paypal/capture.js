@@ -2,7 +2,23 @@
 // GET /api/paypal/capture?token=xxx&PayerID=xxx
 // PayPal 支付完成后的回调（积分包购买）
 
-import { capturePayPalOrder } from "../../_lib/paypal.js";
+import { capturePayPalOrder, getPayPalAccessToken } from "../../_lib/paypal.js";
+
+/**
+ * capture 后再 GET 订单详情，从中取 custom_id
+ * （PayPal capture 响应不稳定返回 custom_id，GET 订单详情才可靠）
+ */
+async function getOrderDetails(env, orderId) {
+  const base = env.PAYPAL_MODE === "sandbox"
+    ? "https://api-m.sandbox.paypal.com"
+    : "https://api-m.paypal.com";
+  const token = await getPayPalAccessToken(env);
+  const res = await fetch(`${base}/v2/checkout/orders/${orderId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -15,22 +31,25 @@ export async function onRequestGet(context) {
   }
 
   try {
+    // 先 capture
     const capture = await capturePayPalOrder(env, token);
 
     if (capture.status !== "COMPLETED") {
-      console.error("PayPal capture not completed:", capture.status);
+      console.error("PayPal capture not completed:", capture.status, JSON.stringify(capture));
       return Response.redirect(`${origin}/pricing?error=payment_failed`, 302);
     }
 
-    // 从 custom_id 中解析 userId 和 credits
+    // capture 响应里 custom_id 不可靠，重新 GET 订单详情
+    const orderDetail = await getOrderDetails(env, token);
+    const customId = orderDetail?.purchase_units?.[0]?.custom_id || "";
+
     // custom_id 格式: "credits:{userId}:{credits}"
-    const customId = capture.purchase_units?.[0]?.custom_id || "";
     const parts = customId.split(":");
     const userId = parts[1];
     const credits = parseInt(parts[2]) || 0;
 
     if (!userId || !credits) {
-      console.error("PayPal capture: invalid custom_id", customId);
+      console.error("PayPal capture: invalid custom_id", customId, "order:", token);
       return Response.redirect(`${origin}/pricing?error=invalid_data`, 302);
     }
 
@@ -41,7 +60,7 @@ export async function onRequestGet(context) {
       .bind(credits, userId)
       .run();
 
-    // 记录支付记录（可选，若有 payments 表）
+    // 记录支付
     try {
       const captureId = capture.purchase_units?.[0]?.payments?.captures?.[0]?.id;
       const amount = capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
@@ -52,8 +71,7 @@ export async function onRequestGet(context) {
         .bind(token, captureId || "", userId, credits, parseFloat(amount) || 0)
         .run();
     } catch (e) {
-      // payments 表可能还不存在，忽略错误
-      console.warn("Payment log failed (table may not exist):", e.message);
+      console.warn("Payment log failed:", e.message);
     }
 
     return Response.redirect(
