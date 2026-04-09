@@ -17,7 +17,7 @@ export async function onRequestPost(context) {
   const { request, env } = context;
 
   // 验证登录状态（getSessionUser 第二个参数为 JWT secret）
-  const user = await getSessionUser(request, env.SESSION_SECRET);
+  const user = await getSessionUser(request, env.JWT_SECRET);
   if (!user) {
     return Response.json({ error: "Login required" }, { status: 401 });
   }
