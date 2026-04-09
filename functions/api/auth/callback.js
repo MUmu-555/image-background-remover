@@ -108,10 +108,18 @@ function redirectWithError(msg) {
   );
 }
 
-// 简单 HMAC-SHA256 签名 token
+// 简单 HMAC-SHA256 签名 token（支持 Unicode 用户名/邮箱）
 async function createSessionToken(payload, secret) {
-  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const body = btoa(JSON.stringify(payload));
+  // 用 TextEncoder 替代 btoa，避免 Unicode 字符报错
+  const encode = (obj) => {
+    const json = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(json);
+    return btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  };
+
+  const header = encode({ alg: "HS256", typ: "JWT" });
+  const body = encode(payload);
   const unsigned = `${header}.${body}`;
 
   const key = await crypto.subtle.importKey(
@@ -122,7 +130,8 @@ async function createSessionToken(payload, secret) {
     ["sign"]
   );
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(unsigned));
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 
   return `${unsigned}.${sigB64}`;
 }
