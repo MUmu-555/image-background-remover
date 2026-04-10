@@ -457,6 +457,122 @@ function ProcessingView({ originalUrl }: { originalUrl: string | null }) {
   );
 }
 
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+        onClick={onClose}
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <img
+        src={src}
+        alt="Full size preview"
+        className="max-w-full max-h-full object-contain rounded-xl shadow-2xl cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+// ─── Before/After Slider ──────────────────────────────────────────────────────
+function BeforeAfterSlider({
+  originalUrl,
+  resultUrl,
+  bgColor,
+}: {
+  originalUrl: string;
+  resultUrl: string;
+  bgColor: string;
+}) {
+  const [sliderPos, setSliderPos] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const updatePos = useCallback((clientX: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const pct = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+    setSliderPos(pct);
+  }, []);
+
+  const onMouseDown = () => { dragging.current = true; };
+  const onMouseMove = (e: React.MouseEvent) => { if (dragging.current) updatePos(e.clientX); };
+  const onMouseUp = () => { dragging.current = false; };
+  const onTouchMove = (e: React.TouchEvent) => { updatePos(e.touches[0].clientX); };
+
+  const resultBgStyle =
+    bgColor === "transparent"
+      ? { backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23eee'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23eee'/%3E%3Crect x='10' width='10' height='10' fill='%23fff'/%3E%3Crect y='10' width='10' height='10' fill='%23fff'/%3E%3C/svg%3E\")" }
+      : { backgroundColor: bgColor };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full rounded-2xl overflow-hidden border border-gray-200 select-none cursor-col-resize"
+      style={{ minHeight: 240 }}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+      onTouchMove={onTouchMove}
+      onTouchEnd={() => { dragging.current = false; }}
+    >
+      {/* Result (right / full background) */}
+      <div className="absolute inset-0 flex items-center justify-center" style={resultBgStyle}>
+        <img src={resultUrl} alt="Result" className="max-h-72 w-full object-contain" draggable={false} />
+      </div>
+
+      {/* Original (left clip) */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{ width: `${sliderPos}%` }}
+      >
+        <div className="absolute inset-0 bg-gray-50 flex items-center justify-center" style={{ width: containerRef.current?.offsetWidth ?? 600 }}>
+          <img src={originalUrl} alt="Original" className="max-h-72 w-full object-contain" draggable={false} />
+        </div>
+      </div>
+
+      {/* Divider line */}
+      <div
+        className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
+        style={{ left: `${sliderPos}%` }}
+      >
+        {/* Handle */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 bg-white rounded-full shadow-xl border border-gray-200 flex items-center justify-center cursor-col-resize"
+          onMouseDown={onMouseDown}
+          onTouchStart={() => { dragging.current = true; }}
+        >
+          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l-3 3 3 3M16 9l3 3-3 3" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Labels */}
+      <div className="absolute top-2 left-3 bg-black/40 text-white text-xs font-semibold px-2 py-0.5 rounded-full pointer-events-none">
+        Original
+      </div>
+      <div className="absolute top-2 right-3 bg-indigo-600/80 text-white text-xs font-semibold px-2 py-0.5 rounded-full pointer-events-none">
+        Removed
+      </div>
+    </div>
+  );
+}
+
 function ResultView({
   imageState,
   onDownload,
@@ -468,6 +584,8 @@ function ResultView({
 }) {
   const [bgColor, setBgColor] = useState<string>("transparent");
   const [copied, setCopied] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"split" | "slider">("split");
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const BG_PRESETS = [
@@ -537,41 +655,78 @@ function ResultView({
 
   return (
     <div className="space-y-5">
-      {/* File info */}
+      {/* Lightbox */}
+      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+
+      {/* File info + view toggle */}
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span>{imageState.originalName} · {imageState.originalSize}</span>
-        <span className="text-green-600 font-semibold">✓ Background removed</span>
+        <div className="flex items-center gap-3">
+          <span className="text-green-600 font-semibold">✓ Background removed</span>
+          <div className="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode("split")}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${viewMode === "split" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Split
+            </button>
+            <button
+              onClick={() => setViewMode("slider")}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${viewMode === "slider" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Slider
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Image comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Original */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gray-300" />
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Original</span>
+      {viewMode === "slider" && imageState.originalUrl && imageState.resultUrl ? (
+        <BeforeAfterSlider
+          originalUrl={imageState.originalUrl}
+          resultUrl={imageState.resultUrl}
+          bgColor={bgColor}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Original */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-gray-300" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Original</span>
+            </div>
+            <div className="bg-gray-50 flex items-center justify-center p-4 min-h-48">
+              {imageState.originalUrl && (
+                <img
+                  src={imageState.originalUrl}
+                  alt="Original"
+                  className="max-h-56 max-w-full object-contain rounded-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+                  onClick={() => setLightboxSrc(imageState.originalUrl!)}
+                />
+              )}
+            </div>
           </div>
-          <div className="bg-gray-50 flex items-center justify-center p-4 min-h-48">
-            {imageState.originalUrl && (
-              <img src={imageState.originalUrl} alt="Original" className="max-h-56 max-w-full object-contain rounded-lg" />
-            )}
-          </div>
-        </div>
 
-        {/* Result with background */}
-        <div className="bg-white rounded-2xl border-2 border-indigo-200 overflow-hidden ring-1 ring-indigo-100">
-          <div className="px-4 pt-3 pb-2 border-b border-indigo-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-400" />
-            <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Background Removed</span>
-            <span className="ml-auto text-xs text-green-600 font-semibold">✓ Done</span>
-          </div>
-          <div className="flex items-center justify-center p-4 min-h-48" style={previewStyle}>
-            {imageState.resultUrl && (
-              <img src={imageState.resultUrl} alt="Background removed" className="max-h-56 max-w-full object-contain rounded-lg" />
-            )}
+          {/* Result with background */}
+          <div className="bg-white rounded-2xl border-2 border-indigo-200 overflow-hidden ring-1 ring-indigo-100">
+            <div className="px-4 pt-3 pb-2 border-b border-indigo-100 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-400" />
+              <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Background Removed</span>
+              <span className="ml-auto text-xs text-green-600 font-semibold">✓ Done</span>
+            </div>
+            <div className="flex items-center justify-center p-4 min-h-48" style={previewStyle}>
+              {imageState.resultUrl && (
+                <img
+                  src={imageState.resultUrl}
+                  alt="Background removed"
+                  className="max-h-56 max-w-full object-contain rounded-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+                  onClick={() => setLightboxSrc(imageState.resultUrl!)}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Background color picker */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4">
@@ -998,6 +1153,12 @@ export default function HomePage() {
       const resultUrl = URL.createObjectURL(blob);
       setImageState((prev) => ({ ...prev, resultUrl }));
       setStatus("done");
+
+      // 额度实时更新：处理成功后静默刷新用户信息
+      fetch("/api/auth/me")
+        .then((r) => r.json())
+        .then((d) => { if (d.user) setUser(d.user); })
+        .catch(() => {});
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStatus("error");
