@@ -632,17 +632,43 @@ function ResultView({
     }
   };
 
+  const [downloadFormat, setDownloadFormat] = useState<"png" | "jpg">("png");
+
   const handleDownloadWithBg = async () => {
-    if (bgColor === "transparent") {
+    const isJpg = downloadFormat === "jpg";
+    // JPG 必须有背景色，默认白色
+    const effectiveBg = isJpg && bgColor === "transparent" ? "#ffffff" : bgColor;
+
+    if (!isJpg && effectiveBg === "transparent") {
       onDownload();
       return;
     }
-    const blob = await getComposedBlob();
+
+    // 用 canvas 合成
+    const blob = await new Promise<Blob | null>((resolve) => {
+      if (!imageState.resultUrl) return resolve(null);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d")!;
+        if (effectiveBg !== "transparent") {
+          ctx.fillStyle = effectiveBg;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((b) => resolve(b), isJpg ? "image/jpeg" : "image/png", isJpg ? 0.92 : undefined);
+      };
+      img.src = imageState.resultUrl;
+    });
+
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "removed-background.png";
+    const base = imageState.originalName?.replace(/\.[^.]+$/, "") || "removed-background";
+    a.download = `${base}-removed.${isJpg ? "jpg" : "png"}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -766,15 +792,34 @@ function ResultView({
 
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={handleDownloadWithBg}
-          className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-6 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          Download PNG
-        </button>
+        {/* Format toggle + Download */}
+        <div className="flex-1 flex rounded-xl overflow-hidden shadow-sm">
+          <button
+            onClick={handleDownloadWithBg}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-5 py-3.5 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Download {downloadFormat.toUpperCase()}
+          </button>
+          {/* Format picker */}
+          <div className="flex border-l border-indigo-500 bg-indigo-600">
+            {(["png", "jpg"] as const).map((fmt) => (
+              <button
+                key={fmt}
+                onClick={() => setDownloadFormat(fmt)}
+                className={`px-3 py-3.5 text-xs font-bold transition-colors ${
+                  downloadFormat === fmt
+                    ? "bg-indigo-800 text-white"
+                    : "text-indigo-200 hover:text-white hover:bg-indigo-700"
+                }`}
+              >
+                {fmt.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           onClick={handleCopy}
           className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-colors flex items-center justify-center gap-2"
@@ -1070,6 +1115,7 @@ function Footer() {
             <a href="mailto:support@image-backgroundremover.com" className="hover:text-gray-600">Support</a>
             <a href="/privacy" className="hover:text-gray-600">Privacy</a>
             <a href="/terms" className="hover:text-gray-600">Terms</a>
+            <a href="/blog" className="hover:text-gray-600">Blog</a>
           </div>
           <p className="text-xs text-gray-400">
             © {new Date().getFullYear()} BG Remover · Powered by AI
