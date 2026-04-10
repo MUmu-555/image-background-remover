@@ -1,6 +1,5 @@
 // Cloudflare Pages Function: POST /api/remove-bg
 // 用量控制版：登录用户按计划额度，访客 IP 限流 1次/月
-// 历史记录版：登录用户处理成功后存 R2 + 写 history 表
 
 import { getSessionUser } from "../_lib/session.js";
 import { getUserCredits, consumeCredit, checkGuestRateLimit } from "../_lib/credits.js";
@@ -75,8 +74,6 @@ export async function onRequestPost(context) {
     return Response.json({ error: "Image must be under 20MB." }, { status: 400 });
   }
 
-  const originalFilename = imageFile.name || "image";
-
   // ── 调用 remove.bg ───────────────────────────────────────
   const rbFormData = new FormData();
   rbFormData.append("image_file", imageFile);
@@ -111,36 +108,9 @@ export async function onRequestPost(context) {
     await consumeCredit(env.DB, sessionUser.id);
   }
 
-  // ── 获取图片 buffer ───────────────────────────────────────
+  // ── 返回结果 ─────────────────────────────────────────────
   const imageBuffer = await rbRes.arrayBuffer();
 
-  // ── 存 R2 + 写历史记录（仅登录用户，R2 可选）────────────
-  let historyId = null;
-  if (sessionUser && env.HISTORY_BUCKET) {
-    try {
-      const ts = Date.now();
-      const r2Key = `history/${sessionUser.id}/${ts}.png`;
-
-      // 上传到 R2
-      await env.HISTORY_BUCKET.put(r2Key, imageBuffer, {
-        httpMetadata: { contentType: "image/png" },
-      });
-
-      // 写 D1 历史记录
-      const result = await env.DB.prepare(
-        `INSERT INTO history (user_id, r2_key, original_filename, file_size) VALUES (?, ?, ?, ?)`
-      )
-        .bind(sessionUser.id, r2Key, originalFilename, imageFile.size)
-        .run();
-
-      historyId = result.meta?.last_row_id ?? null;
-    } catch (e) {
-      // 历史记录失败不影响主流程，静默忽略
-      console.error("History save failed:", e);
-    }
-  }
-
-  // ── 返回结果 ─────────────────────────────────────────────
   const headers = {
     "Content-Type": "image/png",
     "Content-Disposition": 'attachment; filename="removed-background.png"',
@@ -152,9 +122,6 @@ export async function onRequestPost(context) {
     if (updatedCredits) {
       headers["X-Credits-Remaining"] = String(updatedCredits.totalRemaining);
       headers["X-Credits-Monthly-Remaining"] = String(updatedCredits.monthlyRemaining);
-    }
-    if (historyId) {
-      headers["X-History-Id"] = String(historyId);
     }
   }
 
