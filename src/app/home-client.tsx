@@ -3,7 +3,17 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type Status = "idle" | "processing" | "done" | "error";
+type Status = "idle" | "processing" | "done" | "error" | "batch";
+
+interface BatchItem {
+  id: string;
+  file: File;
+  originalUrl: string;
+  status: "pending" | "processing" | "done" | "error";
+  resultUrl?: string;
+  resultBlob?: Blob;
+  errorMsg?: string;
+}
 
 interface Credits {
   plan: string;
@@ -188,8 +198,10 @@ function HeroSection() {
 
 function UploadZone({
   onFile,
+  onFiles,
 }: {
   onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -198,11 +210,21 @@ function UploadZone({
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) onFile(file);
+      const files = Array.from(e.dataTransfer.files || []).filter((f) =>
+        ACCEPTED_TYPES.includes(f.type)
+      );
+      if (files.length === 1) onFile(files[0]);
+      else if (files.length > 1) onFiles(files);
     },
-    [onFile]
+    [onFile, onFiles]
   );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 1) onFile(files[0]);
+    else if (files.length > 1) onFiles(files);
+    e.target.value = "";
+  };
 
   return (
     <div
@@ -215,12 +237,11 @@ function UploadZone({
         relative cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-200 
         flex flex-col items-center justify-center p-10 sm:p-16 text-center
         ${isDragging
-          ? "border-indigo-500 bg-indigo-50 drag-active scale-[1.01]"
+          ? "border-indigo-500 bg-indigo-50 scale-[1.01]"
           : "border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50/50"
         }
       `}
     >
-      {/* Upload icon */}
       <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-5 transition-colors ${isDragging ? "bg-indigo-200" : "bg-gray-100"}`}>
         <svg className={`w-10 h-10 transition-colors ${isDragging ? "text-indigo-600" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -228,10 +249,10 @@ function UploadZone({
       </div>
 
       <p className="text-xl font-semibold text-gray-700 mb-2">
-        {isDragging ? "Drop your image here" : "Drag & drop your image here"}
+        {isDragging ? "Drop your images here" : "Drag & drop images here"}
       </p>
       <p className="text-sm text-gray-400 mb-6">
-        Supports JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB
+        Supports JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB · Multiple files supported
       </p>
 
       <button
@@ -239,10 +260,9 @@ function UploadZone({
         className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm"
         onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
       >
-        Choose Image
+        Choose Image(s)
       </button>
 
-      {/* Sample images hint */}
       <p className="mt-5 text-xs text-gray-400">
         Works best with people, products, animals, and objects
       </p>
@@ -251,9 +271,155 @@ function UploadZone({
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
+        multiple
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+        onChange={handleChange}
       />
+    </div>
+  );
+}
+
+// ─── Batch View ───────────────────────────────────────────────────────────────
+function BatchView({
+  items,
+  onReset,
+}: {
+  items: BatchItem[];
+  onReset: () => void;
+}) {
+  const doneItems = items.filter((i) => i.status === "done" && i.resultBlob);
+  const allDone = items.every((i) => i.status === "done" || i.status === "error");
+  const processing = items.filter((i) => i.status === "processing").length;
+  const pending = items.filter((i) => i.status === "pending").length;
+
+  const handleDownloadAll = async () => {
+    // 动态加载 JSZip（CDN）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const JSZip = (await import("https://cdn.skypack.dev/jszip" as any)).default;
+    const zip = new JSZip();
+    doneItems.forEach((item) => {
+      const name = item.file.name.replace(/\.[^.]+$/, "") + "-removed.png";
+      zip.file(name, item.resultBlob!);
+    });
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "removed-backgrounds.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadOne = (item: BatchItem) => {
+    if (!item.resultBlob) return;
+    const url = URL.createObjectURL(item.resultBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = item.file.name.replace(/\.[^.]+$/, "") + "-removed.png";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-gray-900">Batch Processing</h3>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {allDone
+              ? `${doneItems.length} of ${items.length} completed`
+              : `Processing… (${processing} active, ${pending} pending)`}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {allDone && doneItems.length > 1 && (
+            <button
+              onClick={handleDownloadAll}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Download All ZIP
+            </button>
+          )}
+          {allDone && (
+            <button
+              onClick={onReset}
+              className="border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              New Batch
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      {!allDone && (
+        <div className="w-full bg-gray-100 rounded-full h-2">
+          <div
+            className="h-2 bg-indigo-500 rounded-full transition-all"
+            style={{ width: `${(items.filter(i => i.status === "done" || i.status === "error").length / items.length) * 100}%` }}
+          />
+        </div>
+      )}
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {items.map((item) => (
+          <div key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {/* Preview */}
+            <div className="relative aspect-square bg-gray-50">
+              {item.status === "done" && item.resultUrl ? (
+                <img
+                  src={item.resultUrl}
+                  alt={item.file.name}
+                  className="w-full h-full object-contain"
+                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23eee'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23eee'/%3E%3Crect x='10' width='10' height='10' fill='%23fff'/%3E%3Crect y='10' width='10' height='10' fill='%23fff'/%3E%3C/svg%3E\")" }}
+                />
+              ) : (
+                <img src={item.originalUrl} alt={item.file.name} className="w-full h-full object-contain opacity-40" />
+              )}
+              {/* Status overlay */}
+              {item.status === "processing" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                  <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {item.status === "pending" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                  <span className="text-xs text-gray-400">Pending</span>
+                </div>
+              )}
+              {item.status === "error" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-red-50/80">
+                  <span className="text-xs text-red-500 px-2 text-center">{item.errorMsg || "Error"}</span>
+                </div>
+              )}
+              {item.status === "done" && (
+                <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            {/* File name + download */}
+            <div className="p-2">
+              <p className="text-xs text-gray-600 truncate" title={item.file.name}>{item.file.name}</p>
+              {item.status === "done" && (
+                <button
+                  onClick={() => handleDownloadOne(item)}
+                  className="mt-1.5 w-full text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 py-1 rounded-lg transition-colors"
+                >
+                  Download
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -297,36 +463,84 @@ function ResultView({
   onReset,
 }: {
   imageState: ImageState;
-  onDownload: () => void;
+  onDownload: (bg?: string) => void;
   onReset: () => void;
 }) {
-  const [showOriginal, setShowOriginal] = useState(false);
+  const [bgColor, setBgColor] = useState<string>("transparent");
+  const [copied, setCopied] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const BG_PRESETS = [
+    { label: "None", value: "transparent" },
+    { label: "White", value: "#ffffff" },
+    { label: "Black", value: "#000000" },
+    { label: "Gray", value: "#f3f4f6" },
+    { label: "Red", value: "#fecaca" },
+    { label: "Blue", value: "#bfdbfe" },
+    { label: "Green", value: "#bbf7d0" },
+    { label: "Yellow", value: "#fef08a" },
+  ];
+
+  const getComposedBlob = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (!imageState.resultUrl) return resolve(null);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d")!;
+        if (bgColor !== "transparent") {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.drawImage(img, 0, 0);
+        const mime = bgColor === "transparent" ? "image/png" : "image/png";
+        canvas.toBlob((blob) => resolve(blob), mime);
+      };
+      img.src = imageState.resultUrl;
+    });
+  }, [imageState.resultUrl, bgColor]);
+
+  const handleCopy = async () => {
+    try {
+      const blob = await getComposedBlob();
+      if (!blob) return;
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert("Copy not supported in this browser. Please download instead.");
+    }
+  };
+
+  const handleDownloadWithBg = async () => {
+    if (bgColor === "transparent") {
+      onDownload();
+      return;
+    }
+    const blob = await getComposedBlob();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "removed-background.png";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 预览图（带背景色合成）
+  const previewStyle =
+    bgColor === "transparent"
+      ? { backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23eee'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23eee'/%3E%3Crect x='10' width='10' height='10' fill='%23fff'/%3E%3Crect y='10' width='10' height='10' fill='%23fff'/%3E%3C/svg%3E\")" }
+      : { backgroundColor: bgColor };
 
   return (
     <div className="space-y-5">
-      {/* Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-          <button
-            onClick={() => setShowOriginal(false)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-              !showOriginal ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Result
-          </button>
-          <button
-            onClick={() => setShowOriginal(true)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-              showOriginal ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Original
-          </button>
-        </div>
-        <div className="text-xs text-gray-400">
-          {imageState.originalName} · {imageState.originalSize}
-        </div>
+      {/* File info */}
+      <div className="flex items-center justify-between text-xs text-gray-400">
+        <span>{imageState.originalName} · {imageState.originalSize}</span>
+        <span className="text-green-600 font-semibold">✓ Background removed</span>
       </div>
 
       {/* Image comparison */}
@@ -334,7 +548,7 @@ function ResultView({
         {/* Original */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+            <div className="w-2 h-2 rounded-full bg-gray-300" />
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Original</span>
           </div>
           <div className="bg-gray-50 flex items-center justify-center p-4 min-h-48">
@@ -344,14 +558,14 @@ function ResultView({
           </div>
         </div>
 
-        {/* Result */}
+        {/* Result with background */}
         <div className="bg-white rounded-2xl border-2 border-indigo-200 overflow-hidden ring-1 ring-indigo-100">
           <div className="px-4 pt-3 pb-2 border-b border-indigo-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+            <div className="w-2 h-2 rounded-full bg-indigo-400" />
             <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Background Removed</span>
             <span className="ml-auto text-xs text-green-600 font-semibold">✓ Done</span>
           </div>
-          <div className="checkerboard flex items-center justify-center p-4 min-h-48">
+          <div className="flex items-center justify-center p-4 min-h-48" style={previewStyle}>
             {imageState.resultUrl && (
               <img src={imageState.resultUrl} alt="Background removed" className="max-h-56 max-w-full object-contain rounded-lg" />
             )}
@@ -359,10 +573,46 @@ function ResultView({
         </div>
       </div>
 
+      {/* Background color picker */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Background Color</p>
+        <div className="flex flex-wrap gap-2 items-center">
+          {BG_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              onClick={() => setBgColor(preset.value)}
+              title={preset.label}
+              className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                bgColor === preset.value ? "border-indigo-500 scale-110 shadow-md" : "border-gray-200 hover:border-gray-400"
+              } ${preset.value === "transparent" ? "checkerboard" : ""}`}
+              style={preset.value !== "transparent" ? { backgroundColor: preset.value } : {}}
+            />
+          ))}
+          {/* Custom color picker */}
+          <div className="relative">
+            <input
+              type="color"
+              value={bgColor === "transparent" ? "#ffffff" : bgColor}
+              onChange={(e) => setBgColor(e.target.value)}
+              className="w-8 h-8 rounded-lg border-2 border-gray-200 cursor-pointer p-0.5"
+              title="Custom color"
+            />
+          </div>
+          {bgColor !== "transparent" && (
+            <button
+              onClick={() => setBgColor("transparent")}
+              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
         <button
-          onClick={onDownload}
+          onClick={handleDownloadWithBg}
           className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-6 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -371,14 +621,24 @@ function ResultView({
           Download PNG
         </button>
         <button
+          onClick={handleCopy}
+          className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-colors flex items-center justify-center gap-2"
+        >
+          {copied ? (
+            <><svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Copied!</>
+          ) : (
+            <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> Copy</>
+          )}
+        </button>
+        <button
           onClick={onReset}
           className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-colors"
         >
-          Remove Another Image
+          Remove Another
         </button>
       </div>
 
-      {/* Tips */}
+      <canvas ref={canvasRef} className="hidden" />
       <p className="text-center text-xs text-gray-400">
         💡 Your image is processed in memory and never stored on our servers
       </p>
@@ -674,18 +934,17 @@ export default function HomePage() {
     originalName: "",
     originalSize: "",
   });
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string>("");
 
-  // 获取登录用户信息
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => setUser(d.user || null))
       .catch(() => {});
 
-    // 检查 URL 中的 auth_error
     const params = new URLSearchParams(window.location.search);
     const err = params.get("auth_error");
     if (err) {
@@ -694,7 +953,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
       if (imageState.originalUrl) URL.revokeObjectURL(imageState.originalUrl);
@@ -702,8 +960,8 @@ export default function HomePage() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── 单图处理 ─────────────────────────────────────────────
   const processFile = useCallback(async (file: File) => {
-    // Client-side validation
     if (!ACCEPTED_TYPES.includes(file.type)) {
       setErrorMsg("Please upload an image file (JPG, PNG, WEBP).");
       setStatus("error");
@@ -715,29 +973,21 @@ export default function HomePage() {
       return;
     }
 
-    // Revoke previous URLs
     if (imageState.originalUrl) URL.revokeObjectURL(imageState.originalUrl);
     if (imageState.resultUrl) URL.revokeObjectURL(imageState.resultUrl);
 
     const originalUrl = URL.createObjectURL(file);
-    setImageState({
-      originalUrl,
-      resultUrl: null,
-      originalName: file.name,
-      originalSize: formatBytes(file.size),
-    });
+    setImageState({ originalUrl, resultUrl: null, originalName: file.name, originalSize: formatBytes(file.size) });
     setStatus("processing");
     setErrorMsg("");
 
     try {
       const fd = new FormData();
       fd.append("image", file);
-
       const res = await fetch("/api/remove-bg", { method: "POST", body: fd });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: `Error ${res.status}` }));
-        // 区分额度用完 vs 普通错误
         if (body.error === "credits_exhausted" || body.error === "guest_limit_reached") {
           throw new Error(body.message || "Credits exhausted.");
         }
@@ -746,7 +996,6 @@ export default function HomePage() {
 
       const blob = await res.blob();
       const resultUrl = URL.createObjectURL(blob);
-
       setImageState((prev) => ({ ...prev, resultUrl }));
       setStatus("done");
     } catch (err: unknown) {
@@ -754,6 +1003,57 @@ export default function HomePage() {
       setStatus("error");
     }
   }, [imageState.originalUrl, imageState.resultUrl]);
+
+  // ── 批量处理 ─────────────────────────────────────────────
+  const processFiles = useCallback(async (files: File[]) => {
+    const valid = files.filter(
+      (f) => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE_MB * 1024 * 1024
+    ).slice(0, 20); // 最多20张
+
+    if (valid.length === 0) return;
+
+    const items: BatchItem[] = valid.map((file) => ({
+      id: Math.random().toString(36).slice(2),
+      file,
+      originalUrl: URL.createObjectURL(file),
+      status: "pending",
+    }));
+
+    setBatchItems(items);
+    setStatus("batch");
+
+    // 逐一处理（串行，避免并发太多）
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      setBatchItems((prev) =>
+        prev.map((x) => (x.id === item.id ? { ...x, status: "processing" } : x))
+      );
+      try {
+        const fd = new FormData();
+        fd.append("image", item.file);
+        const res = await fetch("/api/remove-bg", { method: "POST", body: fd });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: `Error ${res.status}` }));
+          throw new Error(body.message || body.error || `Error ${res.status}`);
+        }
+        const blob = await res.blob();
+        const resultUrl = URL.createObjectURL(blob);
+        setBatchItems((prev) =>
+          prev.map((x) =>
+            x.id === item.id ? { ...x, status: "done", resultUrl, resultBlob: blob } : x
+          )
+        );
+      } catch (err: unknown) {
+        setBatchItems((prev) =>
+          prev.map((x) =>
+            x.id === item.id
+              ? { ...x, status: "error", errorMsg: err instanceof Error ? err.message : "Failed" }
+              : x
+          )
+        );
+      }
+    }
+  }, []);
 
   const handleDownload = () => {
     if (!imageState.resultUrl) return;
@@ -768,8 +1068,13 @@ export default function HomePage() {
   const handleReset = () => {
     if (imageState.originalUrl) URL.revokeObjectURL(imageState.originalUrl);
     if (imageState.resultUrl) URL.revokeObjectURL(imageState.resultUrl);
+    batchItems.forEach((item) => {
+      URL.revokeObjectURL(item.originalUrl);
+      if (item.resultUrl) URL.revokeObjectURL(item.resultUrl);
+    });
     setStatus("idle");
     setImageState({ originalUrl: null, resultUrl: null, originalName: "", originalSize: "" });
+    setBatchItems([]);
     setErrorMsg("");
   };
 
@@ -777,7 +1082,6 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col">
       <Header user={user} authError={authError} />
 
-      {/* 额度预警 banner */}
       {user?.credits && user.credits.totalRemaining <= 2 && user.credits.totalRemaining > 0 && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2.5 text-center text-sm text-yellow-800">
           ⚠️ Only <strong>{user.credits.totalRemaining}</strong> credit{user.credits.totalRemaining > 1 ? "s" : ""} left this month.{" "}
@@ -786,17 +1090,16 @@ export default function HomePage() {
       )}
       {user?.credits && user.credits.totalRemaining === 0 && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2.5 text-center text-sm text-red-800">
-          🚫 You've used all your credits.{" "}
+          🚫 You&apos;ve used all your credits.{" "}
           <a href="/pricing" className="underline font-semibold hover:text-red-900">Get more credits →</a>
         </div>
       )}
 
       <HeroSection />
 
-      {/* Main interaction area */}
       <section className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8">
         {status === "idle" && (
-          <UploadZone onFile={processFile} />
+          <UploadZone onFile={processFile} onFiles={processFiles} />
         )}
         {status === "processing" && (
           <ProcessingView originalUrl={imageState.originalUrl} />
@@ -810,6 +1113,9 @@ export default function HomePage() {
         )}
         {status === "error" && (
           <ErrorView message={errorMsg} onRetry={handleReset} user={user} />
+        )}
+        {status === "batch" && (
+          <BatchView items={batchItems} onReset={handleReset} />
         )}
       </section>
 

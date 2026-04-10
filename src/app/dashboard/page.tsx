@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Credits {
   plan: string;
@@ -33,9 +33,11 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelDone, setCancelDone] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
+  const refreshUser = useCallback(() => {
+    return fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => {
         if (!d.user) {
@@ -44,9 +46,31 @@ export default function DashboardPage() {
           setUser(d.user);
         }
       })
-      .catch(() => (window.location.href = "/"))
-      .finally(() => setLoading(false));
+      .catch(() => (window.location.href = "/"));
   }, []);
+
+  useEffect(() => {
+    refreshUser().finally(() => setLoading(false));
+  }, [refreshUser]);
+
+  const handleCancelSubscription = async () => {
+    if (!confirm("Are you sure you want to cancel your subscription? You'll be moved to the Free plan immediately.")) return;
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/paypal/cancel-subscription", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setCancelDone(true);
+        await refreshUser();
+      } else {
+        alert(data.error || "Failed to cancel subscription");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -217,6 +241,24 @@ export default function DashboardPage() {
               <a href="/pricing" className="text-sm font-semibold text-indigo-600 hover:underline">
                 See plans →
               </a>
+            </div>
+          )}
+          {credits?.plan !== "free" && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              {cancelDone ? (
+                <p className="text-sm text-green-600 font-medium">✅ Subscription cancelled. You're now on the Free plan.</p>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500">Want to cancel your subscription?</p>
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={cancelling}
+                    className="text-sm font-semibold text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {cancelling ? "Cancelling…" : "Cancel subscription"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
