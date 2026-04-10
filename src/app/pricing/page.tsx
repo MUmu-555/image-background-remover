@@ -458,6 +458,20 @@ export default function PricingPage() {
           </p>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 py-8 px-4 mt-10">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+          <span>© {new Date().getFullYear()} BG Remover · All rights reserved</span>
+          <div className="flex gap-5">
+            <a href="/" className="hover:text-gray-600">Home</a>
+            <a href="/dashboard" className="hover:text-gray-600">Dashboard</a>
+            <a href="/privacy" className="hover:text-gray-600">Privacy Policy</a>
+            <a href="/terms" className="hover:text-gray-600">Terms of Service</a>
+            <a href="mailto:support@image-backgroundremover.com" className="hover:text-gray-600">Contact</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

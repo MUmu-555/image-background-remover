@@ -653,6 +653,8 @@ function Footer() {
             <a href="/pricing" className="hover:text-gray-600">Pricing</a>
             <a href="/dashboard" className="hover:text-gray-600">Dashboard</a>
             <a href="mailto:support@image-backgroundremover.com" className="hover:text-gray-600">Support</a>
+            <a href="/privacy" className="hover:text-gray-600">Privacy</a>
+            <a href="/terms" className="hover:text-gray-600">Terms</a>
           </div>
           <p className="text-xs text-gray-400">
             © {new Date().getFullYear()} BG Remover · Powered by AI
