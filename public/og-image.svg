@@ -1,0 +1,29 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EEF2FF"/>
+      <stop offset="100%" style="stop-color:#F5F3FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Logo icon -->
+  <rect x="80" y="80" width="72" height="72" rx="16" fill="#4F46E5"/>
+  <text x="116" y="132" font-size="40" text-anchor="middle" fill="white">✦</text>
+  <!-- Brand -->
+  <text x="170" y="130" font-family="system-ui, sans-serif" font-size="28" font-weight="700" fill="#1F2937">BG Remover</text>
+  <!-- Badge -->
+  <rect x="80" y="190" width="180" height="36" rx="18" fill="#4F46E5" opacity="0.1"/>
+  <text x="170" y="214" font-family="system-ui, sans-serif" font-size="15" font-weight="600" fill="#4F46E5" text-anchor="middle">AI-Powered · Free</text>
+  <!-- Main headline -->
+  <text x="80" y="310" font-family="system-ui, sans-serif" font-size="72" font-weight="800" fill="#111827">Remove Image</text>
+  <text x="80" y="400" font-family="system-ui, sans-serif" font-size="72" font-weight="800" fill="#4F46E5">Background</text>
+  <text x="80" y="490" font-family="system-ui, sans-serif" font-size="72" font-weight="800" fill="#111827">in Seconds</text>
+  <!-- Subtext -->
+  <text x="80" y="565" font-family="system-ui, sans-serif" font-size="26" fill="#6B7280">Free · Fast · No sign-up required</text>
+  <!-- Right side decorative -->
+  <rect x="820" y="80" width="300" height="300" rx="24" fill="white" opacity="0.6"/>
+  <rect x="850" y="110" width="240" height="240" rx="16" fill="#4F46E5" opacity="0.08"/>
+  <text x="970" y="260" font-size="100" text-anchor="middle">🖼️</text>
+  <rect x="820" y="420" width="300" height="140" rx="24" fill="white" opacity="0.6"/>
+  <text x="970" y="510" font-family="system-ui, sans-serif" font-size="22" font-weight="600" fill="#4F46E5" text-anchor="middle">image-backgroundremover.com</text>
+</svg>
