@@ -159,6 +159,12 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          <a href="/blog" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
+            Blog
+          </a>
+          <a href="/pricing" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
+            Pricing
+          </a>
           {user ? (
             <UserMenu user={user} />
           ) : (
@@ -1052,6 +1058,93 @@ function FAQSection() {
   );
 }
 
+// ─── Blog Preview Section ─────────────────────────────────────────────────────
+
+const BLOG_POSTS = [
+  {
+    slug: "how-to-remove-background-ecommerce",
+    title: "How to Remove Image Backgrounds for E-Commerce Products",
+    desc: "Clean product photos sell more. Get your images ready for Amazon, Shopify, and more in seconds.",
+    tag: "E-Commerce",
+    tagColor: "bg-blue-100 text-blue-700",
+    icon: "🛒",
+    iconBg: "bg-blue-50",
+  },
+  {
+    slug: "remove-background-id-photo",
+    title: "How to Remove Background from ID Photos (Free & Fast)",
+    desc: "Need a white-background passport or visa photo? Done in seconds — no Photoshop required.",
+    tag: "ID Photos",
+    tagColor: "bg-green-100 text-green-700",
+    icon: "🪪",
+    iconBg: "bg-green-50",
+  },
+  {
+    slug: "free-background-remover-tips",
+    title: "5 Tips to Get the Best Results from an AI Background Remover",
+    desc: "Practical tips on lighting, contrast, and file prep to get cleaner, sharper cutouts every time.",
+    tag: "Tips & Tricks",
+    tagColor: "bg-purple-100 text-purple-700",
+    icon: "💡",
+    iconBg: "bg-purple-50",
+  },
+];
+
+function BlogPreviewSection() {
+  return (
+    <section className="py-14 px-4 bg-white border-t border-gray-100">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">Tutorials & Tips</h2>
+            <p className="text-gray-500 mt-1 text-sm">Learn how to get the most out of AI background removal.</p>
+          </div>
+          <a
+            href="/blog"
+            className="hidden sm:flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+          >
+            View all posts
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-5">
+          {BLOG_POSTS.map((post) => (
+            <a
+              key={post.slug}
+              href={`/blog/${post.slug}/`}
+              className="group flex flex-col bg-gray-50 rounded-2xl border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all overflow-hidden"
+            >
+              {/* Icon banner */}
+              <div className={`${post.iconBg} flex items-center justify-center h-20 text-4xl`}>
+                {post.icon}
+              </div>
+              <div className="p-5 flex flex-col flex-1">
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full w-fit mb-3 ${post.tagColor}`}>
+                  {post.tag}
+                </span>
+                <h3 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-snug mb-2">
+                  {post.title}
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed flex-1">{post.desc}</p>
+                <span className="mt-4 text-xs font-semibold text-indigo-600 group-hover:underline">Read more →</span>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <div className="mt-6 text-center sm:hidden">
+          <a href="/blog" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+            View all posts →
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CTASection({ user }: { user: User | null }) {
   return (
     <section className="py-14 px-4 bg-gradient-to-br from-indigo-600 to-indigo-700">
@@ -1349,6 +1442,7 @@ export default function HomePage() {
       <FeaturesSection />
       <UseCasesSection />
       <FAQSection />
+      <BlogPreviewSection />
       <CTASection user={user} />
       <Footer />
     </main>
