@@ -395,20 +395,52 @@ function BatchView({
 }) {
   const doneItems = items.filter((i) => i.status === "done" && i.resultBlob);
   const allDone = items.every((i) => i.status === "done" || i.status === "error");
-  const processing = items.filter((i) => i.status === "processing").length;
-  const pending = items.filter((i) => i.status === "pending").length;
+
+  const BG_PRESETS = [
+    { label: "Transparent", value: "transparent" },
+    { label: "White", value: "#ffffff" },
+    { label: "Black", value: "#000000" },
+    { label: "Light Gray", value: "#f3f4f6" },
+    { label: "Red", value: "#fecaca" },
+    { label: "Blue", value: "#bfdbfe" },
+    { label: "Green", value: "#bbf7d0" },
+    { label: "Yellow", value: "#fef08a" },
+  ];
+
+  const [bgColor, setBgColor] = useState<string>("transparent");
+
+  // Compose a single blob with bg color applied
+  const composedBlob = useCallback(async (blob: Blob): Promise<Blob> => {
+    if (bgColor === "transparent") return blob;
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((b) => resolve(b || blob), "image/png");
+      };
+      img.src = url;
+    });
+  }, [bgColor]);
 
   const handleDownloadAll = async () => {
-    // 动态加载 JSZip（CDN）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const JSZip = (await import("https://cdn.skypack.dev/jszip" as any)).default;
     const zip = new JSZip();
-    doneItems.forEach((item) => {
+    await Promise.all(doneItems.map(async (item) => {
       const name = item.file.name.replace(/\.[^.]+$/, "") + "-removed.png";
-      zip.file(name, item.resultBlob!);
-    });
-    const blob = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(blob);
+      const blob = await composedBlob(item.resultBlob!);
+      zip.file(name, blob);
+    }));
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "removed-backgrounds.zip";
@@ -417,9 +449,10 @@ function BatchView({
     trackDownload("zip");
   };
 
-  const handleDownloadOne = (item: BatchItem) => {
+  const handleDownloadOne = async (item: BatchItem) => {
     if (!item.resultBlob) return;
-    const url = URL.createObjectURL(item.resultBlob);
+    const blob = await composedBlob(item.resultBlob);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = item.file.name.replace(/\.[^.]+$/, "") + "-removed.png";
@@ -427,6 +460,12 @@ function BatchView({
     URL.revokeObjectURL(url);
     trackDownload("png");
   };
+
+  // Preview style: show bg color or checkerboard
+  const previewStyle: React.CSSProperties =
+    bgColor === "transparent"
+      ? { backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23eee'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23eee'/%3E%3Crect x='10' width='10' height='10' fill='%23fff'/%3E%3Crect y='10' width='10' height='10' fill='%23fff'/%3E%3C/svg%3E\")" }
+      : { backgroundColor: bgColor };
 
   return (
     <div className="space-y-5">
@@ -489,23 +528,64 @@ function BatchView({
         </div>
       )}
 
+      {/* Background color picker */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          Background Color
+          <span className="normal-case font-normal text-gray-400 ml-1">— applied to all images on download</span>
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          {BG_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              onClick={() => setBgColor(preset.value)}
+              title={preset.label}
+              className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                bgColor === preset.value
+                  ? "border-indigo-500 scale-110 shadow-md"
+                  : "border-gray-200 hover:border-gray-400"
+              } ${preset.value === "transparent" ? "checkerboard" : ""}`}
+              style={preset.value !== "transparent" ? { backgroundColor: preset.value } : {}}
+            />
+          ))}
+          {/* Custom color picker */}
+          <input
+            type="color"
+            value={bgColor === "transparent" ? "#ffffff" : bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="w-8 h-8 rounded-lg border-2 border-gray-200 cursor-pointer p-0.5"
+            title="Custom color"
+          />
+          {bgColor !== "transparent" && (
+            <button
+              onClick={() => setBgColor("transparent")}
+              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100"
+            >
+              Clear
+            </button>
+          )}
+          <span className="ml-auto text-xs text-gray-400 hidden sm:inline">
+            {bgColor === "transparent" ? "PNG with transparency" : `Background: ${bgColor}`}
+          </span>
+        </div>
+      </div>
+
       {/* Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {items.map((item) => (
           <div key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Preview */}
-            <div className="relative aspect-square bg-gray-50">
+            <div className="relative aspect-square" style={item.status === "done" && item.resultUrl ? previewStyle : { backgroundColor: "#f9fafb" }}>
               {item.status === "done" && item.resultUrl ? (
                 <img
                   src={item.resultUrl}
                   alt={item.file.name}
                   className="w-full h-full object-contain"
-                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23eee'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23eee'/%3E%3Crect x='10' width='10' height='10' fill='%23fff'/%3E%3Crect y='10' width='10' height='10' fill='%23fff'/%3E%3C/svg%3E\")" }}
                 />
               ) : (
                 <img src={item.originalUrl} alt={item.file.name} className="w-full h-full object-contain opacity-40" />
               )}
-              {/* Status overlay */}
+              {/* Status overlays */}
               {item.status === "processing" && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/60">
                   <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
