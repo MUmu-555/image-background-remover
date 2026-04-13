@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import {
+  trackUpload,
+  trackRemoveSuccess,
+  trackRemoveError,
+  trackDownload,
+  trackCopy,
+} from "@/lib/gtag";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Status = "idle" | "processing" | "done" | "error" | "batch";
@@ -308,6 +315,7 @@ function BatchView({
     a.download = "removed-backgrounds.zip";
     a.click();
     URL.revokeObjectURL(url);
+    trackDownload("zip");
   };
 
   const handleDownloadOne = (item: BatchItem) => {
@@ -318,6 +326,7 @@ function BatchView({
     a.download = item.file.name.replace(/\.[^.]+$/, "") + "-removed.png";
     a.click();
     URL.revokeObjectURL(url);
+    trackDownload("png");
   };
 
   return (
@@ -627,6 +636,7 @@ function ResultView({
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackCopy();
     } catch {
       alert("Copy not supported in this browser. Please download instead.");
     }
@@ -641,6 +651,7 @@ function ResultView({
 
     if (!isJpg && effectiveBg === "transparent") {
       onDownload();
+      trackDownload("png");
       return;
     }
 
@@ -671,6 +682,7 @@ function ResultView({
     a.download = `${base}-removed.${isJpg ? "jpg" : "png"}`;
     a.click();
     URL.revokeObjectURL(url);
+    trackDownload(isJpg ? "jpg" : "png");
   };
 
   // 预览图（带背景色合成）
@@ -1181,6 +1193,7 @@ export default function HomePage() {
     setImageState({ originalUrl, resultUrl: null, originalName: file.name, originalSize: formatBytes(file.size) });
     setStatus("processing");
     setErrorMsg("");
+    trackUpload("single");
 
     try {
       const fd = new FormData();
@@ -1199,6 +1212,7 @@ export default function HomePage() {
       const resultUrl = URL.createObjectURL(blob);
       setImageState((prev) => ({ ...prev, resultUrl }));
       setStatus("done");
+      trackRemoveSuccess("single");
 
       // 额度实时更新：处理成功后静默刷新用户信息
       fetch("/api/auth/me")
@@ -1206,8 +1220,10 @@ export default function HomePage() {
         .then((d) => { if (d.user) setUser(d.user); })
         .catch(() => {});
     } catch (err: unknown) {
+      const reason = err instanceof Error ? err.message : "unknown";
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStatus("error");
+      trackRemoveError(reason);
     }
   }, [imageState.originalUrl, imageState.resultUrl]);
 
@@ -1228,8 +1244,10 @@ export default function HomePage() {
 
     setBatchItems(items);
     setStatus("batch");
+    trackUpload("batch", valid.length);
 
     // 逐一处理（串行，避免并发太多）
+    let successCount = 0;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       setBatchItems((prev) =>
@@ -1250,6 +1268,7 @@ export default function HomePage() {
             x.id === item.id ? { ...x, status: "done", resultUrl, resultBlob: blob } : x
           )
         );
+        successCount++;
       } catch (err: unknown) {
         setBatchItems((prev) =>
           prev.map((x) =>
@@ -1260,6 +1279,7 @@ export default function HomePage() {
         );
       }
     }
+    if (successCount > 0) trackRemoveSuccess("batch", successCount);
   }, []);
 
   const handleDownload = () => {

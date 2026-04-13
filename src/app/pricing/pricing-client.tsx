@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { trackPlanClick, trackPackClick, trackCheckoutStart } from "@/lib/gtag";
 
 const PLANS = [
   {
@@ -183,6 +184,7 @@ export default function PricingPage() {
       return;
     }
 
+    trackPlanClick(plan.planKey, billing);
     setLoadingPlan(plan.planKey);
     try {
       const res = await fetch("/api/paypal/create-subscription", {
@@ -200,6 +202,8 @@ export default function PricingPage() {
       if (!res.ok) throw new Error(data.error || "Failed");
 
       if (data.approveUrl) {
+        const price = billing === "monthly" ? plan.monthly : plan.yearly;
+        trackCheckoutStart("subscription", plan.planKey, price);
         window.location.href = data.approveUrl;
       } else {
         throw new Error("No approve URL");
@@ -214,6 +218,7 @@ export default function PricingPage() {
 
   // 处理积分包购买（一次性）
   const handlePackClick = useCallback(async (pack: typeof CREDIT_PACKS[0]) => {
+    trackPackClick(pack.key, pack.price);
     setLoadingPack(pack.key);
     try {
       const res = await fetch("/api/paypal/create-order", {
@@ -231,6 +236,7 @@ export default function PricingPage() {
       if (!res.ok) throw new Error(data.error || "Failed");
 
       if (data.approveUrl) {
+        trackCheckoutStart("pack", pack.key, pack.price);
         window.location.href = data.approveUrl;
       } else {
         throw new Error("No approve URL");
