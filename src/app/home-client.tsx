@@ -10,7 +10,7 @@ import {
 } from "@/lib/gtag";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type Status = "idle" | "processing" | "done" | "error" | "batch";
+type Status = "idle" | "processing" | "done" | "error" | "batch-preview" | "batch";
 
 interface BatchItem {
   id: string;
@@ -379,6 +379,164 @@ function UploadZone({
 }
 
 // ─── Batch View ───────────────────────────────────────────────────────────────
+// ─── Batch Preview (before processing) ───────────────────────────────────────
+function BatchPreviewView({
+  items,
+  onRemove,
+  onAddMore,
+  onStart,
+  onCancel,
+}: {
+  items: BatchItem[];
+  onRemove: (id: string) => void;
+  onAddMore: (files: File[]) => void;
+  onStart: () => void;
+  onCancel: () => void;
+}) {
+  const addMoreRef = useRef<HTMLInputElement>(null);
+
+  const handleAddMore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(
+      (f) => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE_MB * 1024 * 1024
+    );
+    if (files.length > 0) onAddMore(files);
+    e.target.value = "";
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-gray-900 text-lg">Review Images</h3>
+            <span className="text-xs bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">
+              {items.length} / 20
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Remove unwanted images, then click <strong>Start Processing</strong>.
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {items.length < 20 && (
+            <>
+              <button
+                type="button"
+                onClick={() => addMoreRef.current?.click()}
+                className="border border-gray-300 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add More
+              </button>
+              <input
+                ref={addMoreRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={handleAddMore}
+              />
+            </>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border border-gray-200 text-gray-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onStart}
+            disabled={items.length === 0}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Start Processing ({items.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Image grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {items.map((item) => (
+          <div key={item.id} className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {/* Preview */}
+            <div className="relative aspect-square bg-gray-50">
+              <img
+                src={item.originalUrl}
+                alt={item.file.name}
+                className="w-full h-full object-contain"
+              />
+              {/* Delete button — always visible on mobile, hover on desktop */}
+              <button
+                type="button"
+                onClick={() => onRemove(item.id)}
+                className="absolute top-1.5 right-1.5 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                title="Remove image"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* File info */}
+            <div className="p-2">
+              <p className="text-xs text-gray-600 truncate" title={item.file.name}>
+                {item.file.name}
+              </p>
+              <p className="text-xs text-gray-400">{(item.file.size / 1024 / 1024).toFixed(1)} MB</p>
+            </div>
+          </div>
+        ))}
+
+        {/* Add more slot */}
+        {items.length < 20 && (
+          <label className="aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 flex flex-col items-center justify-center cursor-pointer transition-colors group">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={handleAddMore}
+            />
+            <svg className="w-8 h-8 text-gray-300 group-hover:text-indigo-400 transition-colors mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="text-xs text-gray-400 group-hover:text-indigo-500 font-medium">Add more</span>
+          </label>
+        )}
+      </div>
+
+      {/* Bottom action bar */}
+      <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4">
+        <p className="text-sm text-indigo-700">
+          <span className="font-semibold">{items.length}</span> image{items.length !== 1 ? "s" : ""} ready to process
+        </p>
+        <button
+          type="button"
+          onClick={onStart}
+          disabled={items.length === 0}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Start Processing
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Batch View (processing & results) ───────────────────────────────────────
 function BatchView({
   items,
   onReset,
@@ -1523,8 +1681,15 @@ export default function HomePage() {
     }));
 
     setBatchItems(items);
+    setStatus("batch-preview"); // 先进预览，让用户确认后再处理
+  }, []);
+
+  // 用户点击"开始处理"后真正跑 API
+  const startBatchProcessing = useCallback(async (items: BatchItem[]) => {
+    if (items.length === 0) return;
+
     setStatus("batch");
-    trackUpload("batch", valid.length);
+    trackUpload("batch", items.length);
 
     // 逐一处理（串行，避免并发太多）
     let successCount = 0;
@@ -1560,6 +1725,32 @@ export default function HomePage() {
       }
     }
     if (successCount > 0) trackRemoveSuccess("batch", successCount);
+  }, []);
+
+  // 预览阶段：删除某张图
+  const handleBatchRemove = useCallback((id: string) => {
+    setBatchItems((prev) => {
+      const item = prev.find((x) => x.id === id);
+      if (item) URL.revokeObjectURL(item.originalUrl);
+      const next = prev.filter((x) => x.id !== id);
+      if (next.length === 0) setStatus("idle");
+      return next;
+    });
+  }, []);
+
+  // 预览阶段：追加更多图片
+  const handleBatchAddMore = useCallback((files: File[]) => {
+    setBatchItems((prev) => {
+      const remaining = 20 - prev.length;
+      if (remaining <= 0) return prev;
+      const newItems: BatchItem[] = files.slice(0, remaining).map((file) => ({
+        id: Math.random().toString(36).slice(2),
+        file,
+        originalUrl: URL.createObjectURL(file),
+        status: "pending",
+      }));
+      return [...prev, ...newItems];
+    });
   }, []);
 
   const handleDownload = () => {
@@ -1620,6 +1811,15 @@ export default function HomePage() {
         )}
         {status === "error" && (
           <ErrorView message={errorMsg} onRetry={handleReset} user={user} />
+        )}
+        {status === "batch-preview" && (
+          <BatchPreviewView
+            items={batchItems}
+            onRemove={handleBatchRemove}
+            onAddMore={handleBatchAddMore}
+            onStart={() => startBatchProcessing(batchItems)}
+            onCancel={handleReset}
+          />
         )}
         {status === "batch" && (
           <BatchView items={batchItems} onReset={handleReset} />
