@@ -218,8 +218,7 @@ function UploadZone({
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [tab, setTab] = useState<"single" | "batch">("single");
-  const singleRef = useRef<HTMLInputElement>(null);
-  const batchRef = useRef<HTMLInputElement>(null);
+  const isBatch = tab === "batch";
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -247,7 +246,7 @@ function UploadZone({
     e.target.value = "";
   };
 
-  const isBatch = tab === "batch";
+  const inputId = isBatch ? "batch-file-input" : "single-file-input";
 
   return (
     <div className="space-y-0">
@@ -255,7 +254,7 @@ function UploadZone({
       <div className="flex rounded-t-2xl overflow-hidden border border-b-0 border-gray-200 bg-gray-50">
         <button
           type="button"
-          onClick={() => setTab("single")}
+          onClick={(e) => { e.preventDefault(); setTab("single"); }}
           className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
             !isBatch
               ? "bg-white text-indigo-600 border-b-2 border-indigo-600"
@@ -270,7 +269,7 @@ function UploadZone({
         <div className="w-px bg-gray-200" />
         <button
           type="button"
-          onClick={() => setTab("batch")}
+          onClick={(e) => { e.preventDefault(); setTab("batch"); }}
           className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
             isBatch
               ? "bg-white text-indigo-600 border-b-2 border-indigo-600"
@@ -287,16 +286,33 @@ function UploadZone({
         </button>
       </div>
 
-      {/* Drop zone */}
-      <div
-        onClick={() => (isBatch ? batchRef : singleRef).current?.click()}
+      {/* Hidden file inputs — label association is the reliable trigger */}
+      <input
+        id="single-file-input"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleSingleChange}
+      />
+      <input
+        id="batch-file-input"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={handleBatchChange}
+      />
+
+      {/* Drop zone — label wraps everything so clicking anywhere opens file picker */}
+      <label
+        htmlFor={inputId}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragEnter={() => setIsDragging(true)}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
+        onDrop={(e) => { handleDrop(e); }}
         className={`
-          relative cursor-pointer border-2 border-dashed transition-all duration-200
-          rounded-b-2xl flex flex-col items-center justify-center p-10 sm:p-14 text-center
+          block relative cursor-pointer border-2 border-dashed transition-all duration-200
+          rounded-b-2xl text-center
           ${isDragging
             ? "border-indigo-500 bg-indigo-50 scale-[1.005]"
             : isBatch
@@ -305,82 +321,59 @@ function UploadZone({
           }
         `}
       >
-        {/* Icon */}
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-          isDragging ? "bg-indigo-200" : isBatch ? "bg-indigo-100" : "bg-gray-100"
-        }`}>
-          {isBatch ? (
-            <svg className={`w-8 h-8 ${isDragging ? "text-indigo-700" : "text-indigo-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-          ) : (
-            <svg className={`w-8 h-8 transition-colors ${isDragging ? "text-indigo-600" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-            </svg>
-          )}
-        </div>
-
-        {isBatch ? (
-          <>
-            <p className="text-xl font-semibold text-gray-800 mb-1">
-              {isDragging ? "Drop all images here" : "Upload multiple images at once"}
-            </p>
-            <p className="text-sm text-gray-500 mb-1">
-              Select up to <strong>20 images</strong> — processed automatically, one by one
-            </p>
-            <p className="text-xs text-gray-400 mb-6">
-              JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB each · Download all as ZIP
-            </p>
-            <button
-              type="button"
-              className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm flex items-center gap-2"
-              onClick={(e) => { e.stopPropagation(); batchRef.current?.click(); }}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="flex flex-col items-center justify-center p-10 sm:p-14">
+          {/* Icon */}
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+            isDragging ? "bg-indigo-200" : isBatch ? "bg-indigo-100" : "bg-gray-100"
+          }`}>
+            {isBatch ? (
+              <svg className={`w-8 h-8 ${isDragging ? "text-indigo-700" : "text-indigo-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
-              Select Multiple Images
-            </button>
-            <p className="mt-4 text-xs text-gray-400">Or drag & drop multiple files here</p>
-          </>
-        ) : (
-          <>
-            <p className="text-xl font-semibold text-gray-700 mb-1">
-              {isDragging ? "Drop your image here" : "Drag & drop an image here"}
-            </p>
-            <p className="text-sm text-gray-400 mb-6">
-              JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB
-            </p>
-            <button
-              type="button"
-              className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm"
-              onClick={(e) => { e.stopPropagation(); singleRef.current?.click(); }}
-            >
-              Choose Image
-            </button>
-            <p className="mt-4 text-xs text-gray-400">
-              Works best with people, products, animals, and objects
-            </p>
-          </>
-        )}
+            ) : (
+              <svg className={`w-8 h-8 transition-colors ${isDragging ? "text-indigo-600" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            )}
+          </div>
 
-        {/* Hidden inputs */}
-        <input
-          ref={singleRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={handleSingleChange}
-        />
-        <input
-          ref={batchRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="hidden"
-          onChange={handleBatchChange}
-        />
-      </div>
+          {isBatch ? (
+            <>
+              <p className="text-xl font-semibold text-gray-800 mb-1">
+                {isDragging ? "Drop all images here" : "Click to select multiple images"}
+              </p>
+              <p className="text-sm text-gray-500 mb-1">
+                Select up to <strong>20 images</strong> — hold <kbd className="bg-gray-100 border border-gray-300 text-gray-600 text-xs px-1.5 py-0.5 rounded font-mono">Ctrl</kbd> / <kbd className="bg-gray-100 border border-gray-300 text-gray-600 text-xs px-1.5 py-0.5 rounded font-mono">⌘</kbd> to pick multiple
+              </p>
+              <p className="text-xs text-gray-400 mb-6">
+                JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB each · Download all as ZIP
+              </p>
+              <span className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm pointer-events-none">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Select Images
+              </span>
+              <p className="mt-4 text-xs text-gray-400">Or drag & drop multiple files here</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-semibold text-gray-700 mb-1">
+                {isDragging ? "Drop your image here" : "Click to select an image"}
+              </p>
+              <p className="text-sm text-gray-400 mb-6">
+                JPG, PNG, WEBP · Max {MAX_SIZE_MB}MB
+              </p>
+              <span className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm pointer-events-none">
+                Choose Image
+              </span>
+              <p className="mt-4 text-xs text-gray-400">
+                Or drag & drop · Works best with people, products, animals
+              </p>
+            </>
+          )}
+        </div>
+      </label>
     </div>
   );
 }
