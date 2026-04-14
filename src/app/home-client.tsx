@@ -159,13 +159,16 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
         )}
 
         <div className="ml-auto flex items-center gap-1.5">
-          <a href="/id-photo" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg transition-colors text-purple-700 bg-purple-100 hover:bg-purple-200">
+          <a href="/convert" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-sky-700 bg-sky-100 hover:bg-sky-200 transition-colors">Convert</a>
+          <a href="/compress" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-violet-700 bg-violet-100 hover:bg-violet-200 transition-colors">Compress</a>
+          <a href="/resize" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-rose-700 bg-rose-100 hover:bg-rose-200 transition-colors">Resize</a>
+          <a href="/id-photo" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-purple-700 bg-purple-100 hover:bg-purple-200 transition-colors">
             ID Photo
           </a>
-          <a href="/blog" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg transition-colors text-emerald-700 bg-emerald-100 hover:bg-emerald-200">
+          <a href="/blog" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-emerald-700 bg-emerald-100 hover:bg-emerald-200 transition-colors">
             Blog
           </a>
-          <a href="/pricing" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg transition-colors text-amber-700 bg-amber-100 hover:bg-amber-200">
+          <a href="/pricing" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-amber-700 bg-amber-100 hover:bg-amber-200 transition-colors">
             Pricing
           </a>
           {user ? (
