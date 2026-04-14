@@ -159,13 +159,13 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
         )}
 
         <div className="ml-auto flex items-center gap-3">
-          <a href="/id-photo" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
+          <a href="/id-photo" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
             ID Photo
           </a>
-          <a href="/blog" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
+          <a href="/blog" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
             Blog
           </a>
-          <a href="/pricing" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
+          <a href="/pricing" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
             Pricing
           </a>
           {user ? (
@@ -173,7 +173,7 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
           ) : (
             <a
               href="/api/auth/login"
-              className="flex items-center gap-2 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3.5 py-1.5 rounded-full transition-colors shadow-sm"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors shadow-sm"
             >
               {/* Google icon */}
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -261,7 +261,7 @@ function UploadZone({
           className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
             !isBatch
               ? "bg-white text-indigo-600 border-b-2 border-indigo-600"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           }`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -276,7 +276,7 @@ function UploadZone({
           className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
             isBatch
               ? "bg-white text-indigo-600 border-b-2 border-indigo-600"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           }`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -447,7 +447,7 @@ function BatchPreviewView({
           <button
             type="button"
             onClick={onCancel}
-            className="border border-gray-200 text-gray-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+            className="border border-gray-300 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
@@ -664,7 +664,7 @@ function BatchView({
           {allDone && (
             <button
               onClick={onReset}
-              className="border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+              className="border border-gray-300 text-gray-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors"
             >
               New Batch
             </button>
@@ -1183,7 +1183,7 @@ function ResultView({
         </div>
         <button
           onClick={handleCopy}
-          className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-colors flex items-center justify-center gap-2"
+          className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-100 text-gray-700 font-semibold rounded-xl border border-gray-300 transition-colors flex items-center justify-center gap-2"
         >
           {copied ? (
             <><svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Copied!</>
@@ -1193,7 +1193,7 @@ function ResultView({
         </button>
         <button
           onClick={onReset}
-          className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-colors"
+          className="flex-1 sm:flex-none sm:px-6 py-3.5 bg-white hover:bg-gray-100 text-gray-700 font-semibold rounded-xl border border-gray-300 transition-colors"
         >
           Remove Another
         </button>
@@ -1516,7 +1516,7 @@ function CTASection({ user }: { user: User | null }) {
               </a>
               <a
                 href="/dashboard"
-                className="border border-white/30 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/10 transition-colors"
+                className="border-2 border-white/60 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/15 transition-colors"
               >
                 My dashboard
               </a>
@@ -1537,7 +1537,7 @@ function CTASection({ user }: { user: User | null }) {
               </a>
               <a
                 href="/pricing"
-                className="border border-white/30 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/10 transition-colors"
+                className="border-2 border-white/60 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/15 transition-colors"
               >
                 See pricing
               </a>

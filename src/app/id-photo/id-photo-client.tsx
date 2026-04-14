@@ -303,8 +303,8 @@ export default function IdPhotoClient() {
             <span className="text-2xl">✂️</span> BG Remover
           </a>
           <div className="flex items-center gap-4">
-            <a href="/blog" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium">Blog</a>
-            <a href="/pricing" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium">Pricing</a>
+            <a href="/blog" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium">Blog</a>
+            <a href="/pricing" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium">Pricing</a>
             {user ? (
               <a href="/dashboard" className="flex items-center gap-2">
                 {user.avatar && (
