@@ -220,18 +220,22 @@ export default function IdPhotoClient() {
         formData.append("image", file);
 
         const res = await fetch("/api/remove-bg", { method: "POST", body: formData });
-        const data = await res.json();
 
         if (!res.ok) {
-          throw new Error(data.error || "Background removal failed.");
+          // Error responses are JSON
+          let errMsg = "Background removal failed.";
+          try {
+            const errData = await res.json();
+            if (errData?.error) errMsg = errData.error;
+          } catch {
+            // ignore
+          }
+          throw new Error(errMsg);
         }
 
-        // Decode base64 transparent PNG
-        const base64 = data.image as string;
-        const byteChars = atob(base64);
-        const bytes = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
-        const tBlob = new Blob([bytes], { type: "image/png" });
+        // Success: API returns raw PNG binary
+        const arrayBuffer = await res.arrayBuffer();
+        const tBlob = new Blob([arrayBuffer], { type: "image/png" });
         setTransparentBlob(tBlob);
 
         // Composite with chosen bg + size
