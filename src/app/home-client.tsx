@@ -158,14 +158,14 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
           </span>
         )}
 
-        <div className="ml-auto flex items-center gap-3">
-          <a href="/id-photo" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+        <div className="ml-auto flex items-center gap-1.5">
+          <a href="/id-photo" className="hidden sm:inline-block text-sm text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 font-medium px-3 py-1.5 rounded-lg transition-colors">
             ID Photo
           </a>
-          <a href="/blog" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+          <a href="/blog" className="hidden sm:inline-block text-sm text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 font-medium px-3 py-1.5 rounded-lg transition-colors">
             Blog
           </a>
-          <a href="/pricing" className="hidden sm:inline text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+          <a href="/pricing" className="hidden sm:inline-block text-sm text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 font-medium px-3 py-1.5 rounded-lg transition-colors">
             Pricing
           </a>
           {user ? (
