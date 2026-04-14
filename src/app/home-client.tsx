@@ -159,6 +159,9 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          <a href="/id-photo" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
+            ID Photo
+          </a>
           <a href="/blog" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors">
             Blog
           </a>
@@ -1562,6 +1565,7 @@ function Footer() {
           <div className="flex items-center gap-5 text-xs text-gray-400">
             <a href="/pricing" className="hover:text-gray-600">Pricing</a>
             <a href="/dashboard" className="hover:text-gray-600">Dashboard</a>
+            <a href="/id-photo" className="hover:text-gray-600">ID Photo</a>
             <a href="mailto:support@image-backgroundremover.com" className="hover:text-gray-600">Support</a>
             <a href="/privacy" className="hover:text-gray-600">Privacy</a>
             <a href="/terms" className="hover:text-gray-600">Terms</a>
