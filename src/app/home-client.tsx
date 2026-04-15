@@ -161,7 +161,7 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
         <div className="ml-auto flex items-center gap-2">
           {/* Tools dropdown */}
           <div className="relative hidden sm:block group">
-            <button className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+            <button className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors">
               Tools
               <svg className="w-3.5 h-3.5 text-gray-500 group-hover:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -197,8 +197,8 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
             </div>
           </div>
 
-          <a href="/blog" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Blog</a>
-          <a href="/pricing" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Pricing</a>
+          <a href="/blog" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-emerald-700 bg-emerald-100 hover:bg-emerald-200 transition-colors">Blog</a>
+          <a href="/pricing" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-amber-700 bg-amber-100 hover:bg-amber-200 transition-colors">Pricing</a>
           {user ? (
             <UserMenu user={user} />
           ) : (
