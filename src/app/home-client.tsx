@@ -171,27 +171,27 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
             <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-2xl shadow-lg border border-gray-100 py-2 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 origin-top-right">
               <div className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Image Tools</div>
               {[
-                { href: "/replace-bg", icon: "🔄", label: "Replace Background", color: "text-orange-600" },
-                { href: "/watermark", icon: "💧", label: "Add Watermark",       color: "text-teal-600" },
-                { href: "/stitch",    icon: "🖼️", label: "Stitch / Merge",      color: "text-teal-600" },
-                { href: "/border",    icon: "🖼",  label: "Border & Corners",    color: "text-orange-600" },
-                { href: "/id-photo",  icon: "🪪",  label: "ID Photo",            color: "text-purple-600" },
-              ].map(({ href, icon, label, color }) => (
-                <a key={href} href={href} className={`flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors ${color}`}>
-                  <span className="text-base w-5 text-center">{icon}</span>
-                  <span className="text-gray-700">{label}</span>
+                { href: "/replace-bg", icon: "🔄", label: "Replace Background", pill: "bg-orange-100 text-orange-700 hover:bg-orange-50" },
+                { href: "/watermark",  icon: "💧", label: "Add Watermark",       pill: "bg-teal-100 text-teal-700 hover:bg-teal-50" },
+                { href: "/stitch",     icon: "🖼️", label: "Stitch / Merge",      pill: "bg-cyan-100 text-cyan-700 hover:bg-cyan-50" },
+                { href: "/border",     icon: "🖼",  label: "Border & Corners",    pill: "bg-pink-100 text-pink-700 hover:bg-pink-50" },
+                { href: "/id-photo",   icon: "🪪",  label: "ID Photo",            pill: "bg-purple-100 text-purple-700 hover:bg-purple-50" },
+              ].map(({ href, icon, label, pill }) => (
+                <a key={href} href={href} className={`flex items-center gap-2.5 mx-2 my-0.5 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-colors ${pill}`}>
+                  <span className="text-base">{icon}</span>
+                  <span>{label}</span>
                 </a>
               ))}
               <div className="my-1.5 border-t border-gray-100" />
               <div className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Utilities</div>
               {[
-                { href: "/resize",   icon: "↔️", label: "Resize Image",   color: "text-rose-600" },
-                { href: "/compress", icon: "🗜️", label: "Compress Image",  color: "text-violet-600" },
-                { href: "/convert",  icon: "🔁", label: "Convert Format",  color: "text-sky-600" },
-              ].map(({ href, icon, label, color }) => (
-                <a key={href} href={href} className={`flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors ${color}`}>
-                  <span className="text-base w-5 text-center">{icon}</span>
-                  <span className="text-gray-700">{label}</span>
+                { href: "/resize",   icon: "↔️", label: "Resize Image",    pill: "bg-rose-100 text-rose-700 hover:bg-rose-50" },
+                { href: "/compress", icon: "🗜️", label: "Compress Image",   pill: "bg-violet-100 text-violet-700 hover:bg-violet-50" },
+                { href: "/convert",  icon: "🔁", label: "Convert Format",   pill: "bg-sky-100 text-sky-700 hover:bg-sky-50" },
+              ].map(({ href, icon, label, pill }) => (
+                <a key={href} href={href} className={`flex items-center gap-2.5 mx-2 my-0.5 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-colors ${pill}`}>
+                  <span className="text-base">{icon}</span>
+                  <span>{label}</span>
                 </a>
               ))}
             </div>
