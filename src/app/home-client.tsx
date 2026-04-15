@@ -161,6 +161,8 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
         <div className="ml-auto flex items-center gap-1.5">
           <a href="/replace-bg" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-orange-700 bg-orange-100 hover:bg-orange-200 transition-colors">Replace BG</a>
           <a href="/watermark" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-teal-700 bg-teal-100 hover:bg-teal-200 transition-colors">Watermark</a>
+          <a href="/stitch" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-teal-700 bg-teal-100 hover:bg-teal-200 transition-colors">Stitch</a>
+          <a href="/border" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-orange-700 bg-orange-100 hover:bg-orange-200 transition-colors">Border</a>
           <a href="/convert" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-sky-700 bg-sky-100 hover:bg-sky-200 transition-colors">Convert</a>
           <a href="/compress" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-violet-700 bg-violet-100 hover:bg-violet-200 transition-colors">Compress</a>
           <a href="/resize" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-rose-700 bg-rose-100 hover:bg-rose-200 transition-colors">Resize</a>
@@ -1415,31 +1417,31 @@ function FAQSection() {
 
 const BLOG_POSTS = [
   {
-    slug: "how-to-remove-background-ecommerce",
-    title: "How to Remove Image Backgrounds for E-Commerce Products",
-    desc: "Clean product photos sell more. Get your images ready for Amazon, Shopify, and more in seconds.",
-    tag: "E-Commerce",
-    tagColor: "bg-blue-100 text-blue-700",
-    icon: "🛒",
-    iconBg: "bg-blue-50",
+    slug: "how-to-stitch-images-online",
+    title: "How to Stitch & Merge Images Online (Free, No App Needed)",
+    desc: "Combine multiple photos side by side, stacked, or in a grid — in seconds, right in your browser.",
+    tag: "Image Tools",
+    tagColor: "bg-teal-100 text-teal-700",
+    icon: "🖼️",
+    iconBg: "bg-teal-50",
   },
   {
-    slug: "remove-background-id-photo",
-    title: "How to Remove Background from ID Photos (Free & Fast)",
-    desc: "Need a white-background passport or visa photo? Done in seconds — no Photoshop required.",
-    tag: "ID Photos",
-    tagColor: "bg-green-100 text-green-700",
-    icon: "🪪",
-    iconBg: "bg-green-50",
+    slug: "how-to-add-border-to-image",
+    title: "How to Add a Border or Rounded Corners to Any Image (Free)",
+    desc: "Frame a photo with a custom border or soften corners with a radius — no Photoshop, just your browser.",
+    tag: "Image Tools",
+    tagColor: "bg-orange-100 text-orange-700",
+    icon: "🖼",
+    iconBg: "bg-orange-50",
   },
   {
-    slug: "free-background-remover-tips",
-    title: "5 Tips to Get the Best Results from an AI Background Remover",
-    desc: "Practical tips on lighting, contrast, and file prep to get cleaner, sharper cutouts every time.",
-    tag: "Tips & Tricks",
-    tagColor: "bg-purple-100 text-purple-700",
-    icon: "💡",
-    iconBg: "bg-purple-50",
+    slug: "free-photo-editing-tools-no-photoshop",
+    title: "Best Free Online Tools to Edit Photos Without Photoshop (2026)",
+    desc: "A curated list of free browser tools that cover 90% of everyday photo editing — no subscription needed.",
+    tag: "Guides",
+    tagColor: "bg-amber-100 text-amber-700",
+    icon: "🛠️",
+    iconBg: "bg-amber-50",
   },
 ];
 

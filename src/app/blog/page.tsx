@@ -14,6 +14,42 @@ export const metadata = {
 
 const POSTS = [
   {
+    slug: "how-to-stitch-images-online",
+    title: "How to Stitch & Merge Images Online (Free, No App Needed)",
+    description:
+      "Combine multiple photos side by side, stacked, or in an auto grid — in seconds, right in your browser. No app download, no sign-up required.",
+    date: "April 15, 2026",
+    readTime: "5 min read",
+    tag: "Image Tools",
+    tagColor: "bg-teal-100 text-teal-700",
+    icon: "🖼️",
+    iconBg: "from-teal-50 to-teal-100",
+  },
+  {
+    slug: "how-to-add-border-to-image",
+    title: "How to Add a Border or Rounded Corners to Any Image (Free)",
+    description:
+      "Frame photos with custom borders, soften edges with corner radius, and add shadows — all in your browser. No Photoshop, no upload, 100% private.",
+    date: "April 15, 2026",
+    readTime: "4 min read",
+    tag: "Image Tools",
+    tagColor: "bg-orange-100 text-orange-700",
+    icon: "🖼",
+    iconBg: "from-orange-50 to-orange-100",
+  },
+  {
+    slug: "free-photo-editing-tools-no-photoshop",
+    title: "Best Free Online Tools to Edit Photos Without Photoshop (2026)",
+    description:
+      "A curated guide to 8 browser-based tools that replace the most common Photoshop tasks — for free, with no subscription or download required.",
+    date: "April 15, 2026",
+    readTime: "6 min read",
+    tag: "Guides",
+    tagColor: "bg-amber-100 text-amber-700",
+    icon: "🛠️",
+    iconBg: "from-amber-50 to-amber-100",
+  },
+  {
     slug: "how-to-remove-background-ecommerce",
     title: "How to Remove Image Backgrounds for E-Commerce Products",
     description:

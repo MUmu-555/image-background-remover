@@ -73,6 +73,36 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://image-backgroundremover.com/stitch/</loc>
+    <lastmod>2026-04-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://image-backgroundremover.com/border/</loc>
+    <lastmod>2026-04-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://image-backgroundremover.com/blog/how-to-stitch-images-online/</loc>
+    <lastmod>2026-04-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://image-backgroundremover.com/blog/how-to-add-border-to-image/</loc>
+    <lastmod>2026-04-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://image-backgroundremover.com/blog/free-photo-editing-tools-no-photoshop/</loc>
+    <lastmod>2026-04-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://image-backgroundremover.com/privacy/</loc>
     <lastmod>2026-04-10</lastmod>
     <changefreq>yearly</changefreq>
