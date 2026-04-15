@@ -158,23 +158,47 @@ function Header({ user, authError }: { user: User | null; authError?: string }) 
           </span>
         )}
 
-        <div className="ml-auto flex items-center gap-1.5">
-          <a href="/replace-bg" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-orange-700 bg-orange-100 hover:bg-orange-200 transition-colors">Replace BG</a>
-          <a href="/watermark" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-teal-700 bg-teal-100 hover:bg-teal-200 transition-colors">Watermark</a>
-          <a href="/stitch" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-teal-700 bg-teal-100 hover:bg-teal-200 transition-colors">Stitch</a>
-          <a href="/border" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-orange-700 bg-orange-100 hover:bg-orange-200 transition-colors">Border</a>
-          <a href="/convert" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-sky-700 bg-sky-100 hover:bg-sky-200 transition-colors">Convert</a>
-          <a href="/compress" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-violet-700 bg-violet-100 hover:bg-violet-200 transition-colors">Compress</a>
-          <a href="/resize" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-rose-700 bg-rose-100 hover:bg-rose-200 transition-colors">Resize</a>
-          <a href="/id-photo" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-purple-700 bg-purple-100 hover:bg-purple-200 transition-colors">
-            ID Photo
-          </a>
-          <a href="/blog" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-emerald-700 bg-emerald-100 hover:bg-emerald-200 transition-colors">
-            Blog
-          </a>
-          <a href="/pricing" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-amber-700 bg-amber-100 hover:bg-amber-200 transition-colors">
-            Pricing
-          </a>
+        <div className="ml-auto flex items-center gap-2">
+          {/* Tools dropdown */}
+          <div className="relative hidden sm:block group">
+            <button className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              Tools
+              <svg className="w-3.5 h-3.5 text-gray-500 group-hover:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {/* Dropdown panel */}
+            <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-2xl shadow-lg border border-gray-100 py-2 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 origin-top-right">
+              <div className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Image Tools</div>
+              {[
+                { href: "/replace-bg", icon: "🔄", label: "Replace Background", color: "text-orange-600" },
+                { href: "/watermark", icon: "💧", label: "Add Watermark",       color: "text-teal-600" },
+                { href: "/stitch",    icon: "🖼️", label: "Stitch / Merge",      color: "text-teal-600" },
+                { href: "/border",    icon: "🖼",  label: "Border & Corners",    color: "text-orange-600" },
+                { href: "/id-photo",  icon: "🪪",  label: "ID Photo",            color: "text-purple-600" },
+              ].map(({ href, icon, label, color }) => (
+                <a key={href} href={href} className={`flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors ${color}`}>
+                  <span className="text-base w-5 text-center">{icon}</span>
+                  <span className="text-gray-700">{label}</span>
+                </a>
+              ))}
+              <div className="my-1.5 border-t border-gray-100" />
+              <div className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Utilities</div>
+              {[
+                { href: "/resize",   icon: "↔️", label: "Resize Image",   color: "text-rose-600" },
+                { href: "/compress", icon: "🗜️", label: "Compress Image",  color: "text-violet-600" },
+                { href: "/convert",  icon: "🔁", label: "Convert Format",  color: "text-sky-600" },
+              ].map(({ href, icon, label, color }) => (
+                <a key={href} href={href} className={`flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors ${color}`}>
+                  <span className="text-base w-5 text-center">{icon}</span>
+                  <span className="text-gray-700">{label}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <a href="/blog" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Blog</a>
+          <a href="/pricing" className="hidden sm:inline-block text-sm font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Pricing</a>
           {user ? (
             <UserMenu user={user} />
           ) : (
